@@ -5,7 +5,12 @@ async function redisGet(key) {
   });
   const data = await res.json();
   if (!data.result) return null;
-  try { return JSON.parse(data.result); } catch { return null; }
+  try {
+    const parsed = JSON.parse(data.result);
+    // Handle double-stringified data
+    if (typeof parsed === 'string') return JSON.parse(parsed);
+    return parsed;
+  } catch { return null; }
 }
 
 async function redisSet(key, value) {
@@ -16,7 +21,7 @@ async function redisSet(key, value) {
       Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(JSON.stringify(value)),
+    body: JSON.stringify(value),
   });
 }
 
