@@ -46,7 +46,7 @@ async function handler(req, res) {
       }
       if (action === "update") {
         const active = (await redisGet("orders:active")) || [];
-        const safe = Array.isArray(active) ? safe : [];
+        const safe = Array.isArray(active) ? active : [];
         await redisSet("orders:active", safe.map(o => o.id === order.id ? order : o));
         return res.status(200).json({ ok: true });
       }
