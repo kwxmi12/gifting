@@ -19,7 +19,7 @@ async function redisSet(key, value) {
   );
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const password = req.method === "GET" ? req.query.password : req.body?.password;
   if (password !== process.env.APP_PASSWORD) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       }
       if (action === "update") {
         const active = (await redisGet("orders:active")) || [];
-        const safe = Array.isArray(active) ? active : [];
+        const safe = Array.isArray(active) ? safe : [];
         await redisSet("orders:active", safe.map(o => o.id === order.id ? order : o));
         return res.status(200).json({ ok: true });
       }
@@ -85,6 +85,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Server error" });
   }
 }
-    return res.status(500).json({ error: "Server error" });
-  }
-}
+
+module.exports = handler;
