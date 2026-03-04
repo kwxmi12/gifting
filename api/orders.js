@@ -13,7 +13,7 @@ async function redisSet(key, value) {
   await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.UPSTASH_TOKENN}`,
+      Authorization: `Bearer ${process.env.UPSTASH_TOKEN}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(JSON.stringify(value)),
