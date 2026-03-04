@@ -1,8 +1,4 @@
 {
-  "functions": {
-    "api/orders.mjs": {},
-    "api/parse.mjs": {}
-  },
   "rewrites": [
     { "source": "/api/orders", "destination": "/api/orders.mjs" },
     { "source": "/api/parse", "destination": "/api/parse.mjs" },
