@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>✦ Gifting Studio</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', 'Segoe UI', sans-serif; background: #0f0f11; color: #f0ede8; min-height: 100vh; }
+
+    /* Login */
+    #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .login-card { background: #18181d; border: 1px solid #2a2a35; border-radius: 20px; padding: 48px 40px; max-width: 380px; width: 100%; text-align: center; }
+    .login-title { font-family: 'Playfair Display', serif; font-size: 26px; margin-bottom: 6px; }
+    .login-sub { font-size: 13px; color: #606070; margin-bottom: 32px; }
+    .login-input { width: 100%; background: #0f0f11; border: 1px solid #2a2a35; border-radius: 10px; color: #f0ede8; padding: 12px 16px; font-family: inherit; font-size: 15px; outline: none; text-align: center; letter-spacing: 2px; margin-bottom: 14px; transition: border-color 0.2s; }
+    .login-input:focus { border-color: #c8a96e; }
+    .login-error { color: #e07070; font-size: 13px; margin-bottom: 12px; min-height: 18px; }
+
+    /* App */
+    #app-screen { display: none; max-width: 900px; margin: 0 auto; padding: 32px 20px; }
+
+    /* Shared */
+    .card { background: #18181d; border: 1px solid #2a2a35; border-radius: 16px; }
+    .input-field { background: #0f0f11; border: 1px solid #2a2a35; border-radius: 10px; color: #f0ede8; padding: 10px 14px; font-family: inherit; font-size: 14px; outline: none; transition: border-color 0.2s; width: 100%; }
+    .input-field:focus { border-color: #c8a96e; }
+    select.input-field { cursor: pointer; }
+    .btn-primary { background: linear-gradient(135deg, #c8a96e, #e8c98e); color: #0f0f11; border: none; border-radius: 10px; padding: 12px 24px; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s, transform 0.1s; font-family: inherit; white-space: nowrap; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-ghost { background: transparent; border: 1px solid #2a2a35; border-radius: 8px; padding: 6px 12px; color: #a0a0b0; cursor: pointer; font-size: 12px; transition: all 0.2s; font-family: inherit; white-space: nowrap; }
+    .btn-ghost:hover { border-color: #c8a96e; color: #c8a96e; }
+    .btn-danger { background: transparent; border: 1px solid #4a2020; border-radius: 8px; padding: 6px 12px; color: #e07070; cursor: pointer; font-size: 12px; transition: all 0.2s; font-family: inherit; }
+    .btn-danger:hover { background: #4a2020; }
+    .btn-success { background: linear-gradient(135deg, #2d6a4f, #40916c); color: #fff; border: none; border-radius: 10px; padding: 12px 24px; font-weight: 600; font-size: 14px; cursor: pointer; font-family: inherit; }
+    .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #606070; font-weight: 500; margin-bottom: 4px; }
+    .val { font-size: 14px; color: #e0ddd8; }
+    .tag { display: inline-block; background: #23232d; border: 1px solid #3a3a45; border-radius: 20px; padding: 3px 10px; font-size: 12px; color: #c0c0d0; margin: 2px; }
+    textarea { resize: vertical; min-height: 110px; }
+
+    /* Tabs */
+    .tab { padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; font-family: inherit; transition: all 0.2s; }
+    .tab-active { background: #c8a96e; color: #0f0f11; }
+    .tab-inactive { background: transparent; color: #606070; border: 1px solid #2a2a35; }
+    .tab-inactive:hover { color: #c8a96e; border-color: #c8a96e; }
+
+    /* Drop zone */
+    .drop-zone { border: 2px dashed #2a2a35; border-radius: 14px; padding: 40px 20px; text-align: center; transition: all 0.2s; cursor: pointer; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: #c8a96e; background: rgba(200,169,110,0.04); }
+
+    /* Source badge */
+    .source-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; border-radius: 20px; }
+    .badge-img { background: #1a2a3a; color: #6ab0e0; border: 1px solid #2a4a6a; }
+    .badge-txt { background: #1a2a1a; color: #6ae06a; border: 1px solid #2a4a2a; }
+
+    /* Modal */
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+    .modal { background: #18181d; border: 1px solid #2a2a35; border-radius: 16px; padding: 24px; max-width: 620px; width: 100%; }
+    .csv-box { background: #0f0f11; border: 1px solid #2a2a35; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 11px; color: #80c080; white-space: pre; overflow: auto; max-height: 260px; margin: 12px 0; user-select: all; }
+
+    /* Edit grid */
+    .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .edit-grid .full { grid-column: 1 / -1; }
+
+    /* Order grid */
+    .order-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 14px; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1a1a1f; }
+    ::-webkit-scrollbar-thumb { background: #3a3a45; border-radius: 3px; }
+
+    /* Pulse */
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .pulse { animation: pulse 1.5s ease-in-out infinite; }
+
+    /* Header */
+    .header { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 32px; }
+    .header-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+    @media (max-width: 500px) {
+      .login-card { padding: 32px 24px; }
+      .edit-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-title">✦ Gifting Studio</div>
+    <div class="login-sub">Enter your team password to continue</div>
+    <input class="login-input" type="password" id="pw-input" placeholder="••••••••" />
+    <div class="login-error" id="pw-error"></div>
+    <button class="btn-primary" style="width:100%;justify-content:center;" onclick="handleLogin()">Enter →</button>
+  </div>
+</div>
+
+<!-- APP SCREEN -->
+<div id="app-screen">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div style="font-family:'Playfair Display',serif;font-size:28px;font-weight:600;margin-bottom:4px;">✦ Gifting Studio</div>
+      <div style="font-size:13px;color:#606070;">Paste text or upload screenshots · AI parses · Export to Excel</div>
+    </div>
+    <div class="header-right">
+      <button class="btn-ghost" onclick="handleLogout()">Log out</button>
+      <button id="export-btn" class="btn-primary" style="display:none" onclick="handleCopyCSV()">⎘ Copy Orders as CSV</button>
+    </div>
+  </div>
+
+  <!-- Export hint -->
+  <div id="export-hint" class="card" style="padding:14px;margin-bottom:20px;display:none;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div style="font-size:12px;color:#606070;flex:1;">💡 <strong style="color:#c8a96e;">Export to Excel:</strong> Click "Copy as CSV" → Open Excel → New sheet → Click A1 → ⌘V (Mac) or Ctrl+V (Windows)</div>
+    <button class="btn-ghost" style="font-size:11px;" onclick="showCSVModal()">View raw CSV</button>
+  </div>
+
+  <!-- Input Card -->
+  <div class="card" style="padding:24px;margin-bottom:24px;">
+    <div style="display:flex;gap:8px;margin-bottom:20px;">
+      <button class="tab tab-active" id="tab-text" onclick="switchTab('text')">✏️ Paste Text</button>
+      <button class="tab tab-inactive" id="tab-image" onclick="switchTab('image')">🖼 Upload Screenshot</button>
+    </div>
+
+    <!-- Text panel -->
+    <div id="panel-text">
+      <div class="lbl" style="margin-bottom:10px;">Paste raw address / order info</div>
+      <textarea class="input-field" id="text-input" placeholder="cosima chalk, schulenburgring 125, 12101 Berlin Germany&#10;cosima.chalk@gmail.com +4917663639405&#10;Size S puffer&#10;Size M black jogger"></textarea>
+      <div id="text-error" style="color:#e07070;font-size:13px;margin-top:8px;display:none;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px;">
+        <span style="font-size:12px;color:#40404a;">⌘ + Enter to parse</span>
+        <button class="btn-primary" id="parse-text-btn" onclick="handleParseText()">Parse Address →</button>
+      </div>
+    </div>
+
+    <!-- Image panel -->
+    <div id="panel-image" style="display:none;">
+      <div id="drop-zone" class="drop-zone" onclick="document.getElementById('file-input').click()"
+        ondragover="event.preventDefault();this.classList.add('dragover')"
+        ondragleave="this.classList.remove('dragover')"
+        ondrop="handleDrop(event)">
+        <div style="font-size:36px;margin-bottom:12px;">📸</div>
+        <div style="font-size:15px;color:#c8a96e;font-weight:500;margin-bottom:6px;">Drop screenshot here</div>
+        <div style="font-size:12px;color:#505060;">or click to browse · PNG, JPG, WEBP supported</div>
+        <div style="font-size:11px;color:#383840;margin-top:8px;">Instagram DMs, notes, WhatsApp — anything with address info</div>
+      </div>
+      <div id="image-preview" style="display:none;">
+        <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+          <img id="preview-img" src="" alt="Preview" style="width:120px;height:120px;object-fit:cover;border-radius:10px;border:1px solid #2a2a35;flex-shrink:0;" />
+          <div style="flex:1;">
+            <div style="font-size:14px;color:#c8a96e;margin-bottom:6px;font-weight:500;">Screenshot ready</div>
+            <div style="font-size:12px;color:#606070;margin-bottom:16px;">Claude will read all address and order info from this image automatically.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn-primary" id="parse-image-btn" onclick="handleParseImage()">Extract from Image →</button>
+              <button class="btn-ghost" onclick="clearImage()">Remove</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <input type="file" id="file-input" accept="image/*" style="display:none;" onchange="handleFileSelect(this.files[0])" />
+      <div id="image-error" style="color:#e07070;font-size:13px;margin-top:12px;display:none;"></div>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div id="empty-state" style="text-align:center;padding:60px 20px;color:#30303a;">
+    <div style="font-size:40px;margin-bottom:12px;">📦</div>
+    <div style="font-size:14px;">No orders yet — paste text or upload a screenshot above</div>
+  </div>
+
+  <!-- Orders list -->
+  <div id="orders-list" style="display:flex;flex-direction:column;gap:14px;"></div>
+
+</div>
+
+<!-- CSV Modal -->
+<div id="csv-modal" class="modal-bg" style="display:none;" onclick="hideCSVModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-family:'Playfair Display',serif;font-size:18px;">Raw CSV Data</div>
+      <button class="btn-ghost" onclick="hideCSVModal()">✕ Close</button>
+    </div>
+    <div style="font-size:12px;color:#606070;margin-bottom:8px;">Select all (⌘A) and copy (⌘C), then paste into Excel cell A1</div>
+    <div class="csv-box" id="csv-content"></div>
+    <button class="btn-primary" style="width:100%;" onclick="copyCSVFromModal()">⎘ Copy all to clipboard</button>
+  </div>
+</div>
+
+<script>
+  // ─── State ───────────────────────────────────────────────
+  let sessionPassword = "";
+  let orders = [];
+  let pendingImage = null; // { base64, mediaType, previewUrl }
+  let activeTab = "text";
+  let editingId = null;
+
+  const SYSTEM_PROMPT = `You are an address parsing assistant for an Instagram gifting tool.
+Parse text OR images (screenshots of DMs, notes, order info) into structured customer/order data.
+Return ONLY valid JSON. No markdown, no explanation, no code fences.
+Extract: first_name, last_name, full_name, address_line1 (street + number), city, postcode, country, country_code (2-letter ISO), email, phone, items (array of strings), notes (anything unclear).
+If a field is not found, use empty string "".
+Return format: {"first_name":"","last_name":"","full_name":"","address_line1":"","city":"","postcode":"","country":"","country_code":"","email":"","phone":"","items":[],"notes":""}`;
+
+  // ─── Auth ─────────────────────────────────────────────────
+  function handleLogin() {
+    const pw = document.getElementById("pw-input").value.trim();
+    if (!pw) return;
+    sessionPassword = pw;
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("app-screen").style.display = "block";
+    document.getElementById("pw-error").textContent = "";
+  }
+
+  document.getElementById("pw-input").addEventListener("keydown", e => {
+    if (e.key === "Enter") handleLogin();
+  });
+
+  function handleLogout() {
+    sessionPassword = "";
+    orders = [];
+    document.getElementById("app-screen").style.display = "none";
+    document.getElementById("login-screen").style.display = "flex";
+    document.getElementById("pw-input").value = "";
+    renderOrders();
+  }
+
+  // ─── Tabs ────────────────────────────────────────────────
+  function switchTab(tab) {
+    activeTab = tab;
+    document.getElementById("panel-text").style.display = tab === "text" ? "block" : "none";
+    document.getElementById("panel-image").style.display = tab === "image" ? "block" : "none";
+    document.getElementById("tab-text").className = "tab " + (tab === "text" ? "tab-active" : "tab-inactive");
+    document.getElementById("tab-image").className = "tab " + (tab === "image" ? "tab-active" : "tab-inactive");
+  }
+
+  // ─── Text parse ──────────────────────────────────────────
+  async function handleParseText() {
+    const text = document.getElementById("text-input").value.trim();
+    if (!text) return;
+    setLoading("parse-text-btn", "Parsing…");
+    hideError("text-error");
+    try {
+      const parsed = await callAPI([{ role: "user", content: text }]);
+      addOrder({ ...parsed, source: "text" });
+      document.getElementById("text-input").value = "";
+    } catch (e) {
+      showError("text-error", e.message || "Could not parse. Please try again.");
+    }
+    setLoading("parse-text-btn", null, "Parse Address →");
+  }
+
+  document.getElementById("text-input").addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.metaKey) handleParseText();
+  });
+
+  // ─── Image parse ─────────────────────────────────────────
+  async function handleFileSelect(file) {
+    if (!file || !file.type.startsWith("image/")) {
+      showError("image-error", "Please upload an image file (PNG, JPG, etc.)");
+      return;
+    }
+    const base64 = await fileToBase64(file);
+    const previewUrl = URL.createObjectURL(file);
+    pendingImage = { base64, mediaType: file.type, previewUrl };
+    document.getElementById("preview-img").src = previewUrl;
+    document.getElementById("drop-zone").style.display = "none";
+    document.getElementById("image-preview").style.display = "block";
+    hideError("image-error");
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById("drop-zone").classList.remove("dragover");
+    handleFileSelect(e.dataTransfer.files[0]);
+  }
+
+  function clearImage() {
+    pendingImage = null;
+    document.getElementById("drop-zone").style.display = "block";
+    document.getElementById("image-preview").style.display = "none";
+    document.getElementById("file-input").value = "";
+    hideError("image-error");
+  }
+
+  async function handleParseImage() {
+    if (!pendingImage) return;
+    setLoading("parse-image-btn", "Reading image…");
+    hideError("image-error");
+    try {
+      const content = [
+        { type: "image", source: { type: "base64", media_type: pendingImage.mediaType, data: pendingImage.base64 } },
+        { type: "text", text: "Extract all address and order information from this screenshot and return as JSON." }
+      ];
+      const parsed = await callAPI([{ role: "user", content }]);
+      addOrder({ ...parsed, source: "image", thumbUrl: pendingImage.previewUrl });
+      clearImage();
+    } catch (e) {
+      showError("image-error", e.message || "Could not read image. Try a clearer screenshot.");
+    }
+    setLoading("parse-image-btn", null, "Extract from Image →");
+  }
+
+  // ─── API call (via secure backend) ───────────────────────
+  async function callAPI(messages) {
+    const res = await fetch("/api/parse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        password: sessionPassword,
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages,
+      }),
+    });
+    const data = await res.json();
+    if (res.status === 401) {
+      showError("text-error", "Wrong password.");
+      showError("image-error", "Wrong password.");
+      throw new Error("Unauthorized");
+    }
+    if (!res.ok) throw new Error(data.error || "API error");
+    const text = (data.content || []).map(b => b.text || "").join("");
+    return JSON.parse(text.replace(/```json|```/g, "").trim());
+  }
+
+  // ─── Orders ──────────────────────────────────────────────
+  function addOrder(data) {
+    orders.push({ ...data, id: Date.now(), status: "Pending" });
+    renderOrders();
+  }
+
+  function deleteOrder(id) {
+    orders = orders.filter(o => o.id !== id);
+    renderOrders();
+  }
+
+  function updateStatus(id, status) {
+    orders = orders.map(o => o.id === id ? { ...o, status } : o);
+  }
+
+  function startEdit(id) {
+    editingId = id;
+    renderOrders();
+  }
+
+  function saveEdit(id) {
+    const fields = ["first_name","last_name","full_name","email","phone","address_line1","city","postcode","country","country_code","items_str"];
+    const order = orders.find(o => o.id === id);
+    fields.forEach(f => {
+      const el = document.getElementById(`edit-${id}-${f}`);
+      if (!el) return;
+      if (f === "items_str") {
+        order.items = el.value.split(",").map(s => s.trim()).filter(Boolean);
+      } else {
+        order[f] = el.value;
+      }
+    });
+    order.full_name = order.full_name || `${order.first_name} ${order.last_name}`.trim();
+    editingId = null;
+    renderOrders();
+  }
+
+  function cancelEdit() {
+    editingId = null;
+    renderOrders();
+  }
+
+  function renderOrders() {
+    const list = document.getElementById("orders-list");
+    const empty = document.getElementById("empty-state");
+    const exportBtn = document.getElementById("export-btn");
+    const exportHint = document.getElementById("export-hint");
+
+    empty.style.display = orders.length === 0 ? "block" : "none";
+    exportBtn.style.display = orders.length > 0 ? "inline-flex" : "none";
+    exportHint.style.display = orders.length > 0 ? "flex" : "none";
+    exportBtn.textContent = `⎘ Copy ${orders.length} Order${orders.length !== 1 ? "s" : ""} as CSV`;
+
+    list.innerHTML = orders.map(o => {
+      if (editingId === o.id) return renderEditCard(o);
+      return renderViewCard(o);
+    }).join("");
+  }
+
+  function renderViewCard(o) {
+    const badge = o.source === "image"
+      ? `<span class="source-badge badge-img">📸 image</span>`
+      : `<span class="source-badge badge-txt">✏️ text</span>`;
+    const thumb = o.thumbUrl
+      ? `<img src="${o.thumbUrl}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a2a35;flex-shrink:0;" />`
+      : "";
+    const items = (o.items || []).map(i => `<span class="tag">${i}</span>`).join("");
+    const notes = o.notes ? `<div style="margin-top:10px;font-size:12px;color:#706060;font-style:italic;">⚠ ${o.notes}</div>` : "";
+
+    return `<div class="card" style="padding:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          ${thumb}
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+              <span style="font-family:'Playfair Display',serif;font-size:17px;color:#f0ede8;">${o.full_name || "—"}</span>
+              ${badge}
+            </div>
+            <div style="font-size:12px;color:#505060;">${o.email || ""}${o.phone ? " · " + o.phone : ""}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <select class="input-field" style="width:auto;padding:4px 10px;font-size:12px;" onchange="updateStatus(${o.id}, this.value)">
+            <option${o.status==="Pending"?" selected":""}>Pending</option>
+            <option${o.status==="Sent"?" selected":""}>Sent</option>
+            <option${o.status==="Failed"?" selected":""}>Failed</option>
+          </select>
+          <button class="btn-ghost" onclick="startEdit(${o.id})">Edit</button>
+          <button class="btn-danger" onclick="deleteOrder(${o.id})">✕</button>
+        </div>
+      </div>
+      <div class="order-details">
+        <div><div class="lbl">Address</div><div class="val">${o.address_line1 || "—"}</div></div>
+        <div><div class="lbl">City</div><div class="val">${o.city || "—"}</div></div>
+        <div><div class="lbl">Postcode</div><div class="val">${o.postcode || "—"}</div></div>
+        <div><div class="lbl">Country</div><div class="val">${o.country || "—"}${o.country_code ? ` <span style="color:#c8a96e;font-size:12px;">(${o.country_code})</span>` : ""}</div></div>
+      </div>
+      ${items ? `<div><div class="lbl" style="margin-bottom:6px;">Items</div><div>${items}</div></div>` : ""}
+      ${notes}
+    </div>`;
+  }
+
+  function renderEditCard(o) {
+    const fields = [
+      ["first_name","First Name"], ["last_name","Last Name"], ["email","Email"],
+      ["phone","Phone"], ["address_line1","Address"], ["city","City"],
+      ["postcode","Postcode"], ["country","Country"], ["country_code","Country Code"]
+    ];
+    const inputs = fields.map(([f, label]) =>
+      `<div><div class="lbl">${label}</div><input class="input-field" id="edit-${o.id}-${f}" value="${(o[f]||"").replace(/"/g,'&quot;')}" /></div>`
+    ).join("");
+    return `<div class="card" style="padding:20px;">
+      <div class="edit-grid">
+        ${inputs}
+        <div class="full">
+          <div class="lbl">Items (comma separated)</div>
+          <input class="input-field" id="edit-${o.id}-items_str" value="${(o.items||[]).join(", ").replace(/"/g,'&quot;')}" />
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-primary" onclick="saveEdit(${o.id})">Save</button>
+        <button class="btn-ghost" onclick="cancelEdit()">Cancel</button>
+      </div>
+    </div>`;
+  }
+
+  // ─── CSV export ──────────────────────────────────────────
+  function buildCSV() {
+    const headers = ["#","Full Name","First Name","Last Name","Address","City","Postcode","Country","Country Code","Email","Phone","Items","Notes","Status"];
+    const rows = orders.map((o, i) => [
+      i+1, o.full_name, o.first_name, o.last_name, o.address_line1,
+      o.city, o.postcode, o.country, o.country_code, o.email, o.phone,
+      (o.items||[]).join(", "), o.notes, o.status||"Pending"
+    ]);
+    return [headers, ...rows]
+      .map(r => r.map(c => `"${String(c||"").replace(/"/g,'""')}"`).join(","))
+      .join("\n");
+  }
+
+  async function handleCopyCSV() {
+    const csv = buildCSV();
+    try {
+      await navigator.clipboard.writeText(csv);
+      const btn = document.getElementById("export-btn");
+      btn.textContent = "✓ Copied! Paste into Excel";
+      btn.className = "btn-success";
+      setTimeout(() => {
+        btn.textContent = `⎘ Copy ${orders.length} Order${orders.length!==1?"s":""} as CSV`;
+        btn.className = "btn-primary";
+      }, 2500);
+    } catch {
+      showCSVModal();
+    }
+  }
+
+  function showCSVModal() {
+    document.getElementById("csv-content").textContent = buildCSV();
+    document.getElementById("csv-modal").style.display = "flex";
+  }
+
+  function hideCSVModal() {
+    document.getElementById("csv-modal").style.display = "none";
+  }
+
+  async function copyCSVFromModal() {
+    await navigator.clipboard.writeText(buildCSV());
+    hideCSVModal();
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────
+  function fileToBase64(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(",")[1]);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+
+  function setLoading(btnId, loadingText, resetText) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    if (loadingText) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="pulse">${loadingText}</span>`;
+    } else {
+      btn.disabled = false;
+      btn.textContent = resetText;
+    }
+  }
+
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = msg; el.style.display = "block"; }
+  }
+
+  function hideError(id) {
+    const el = document.getElementById(id);
+    if (el) { el.style.display = "none"; }
+  }
+</script>
+</body>
+</html>
