@@ -1,23 +1,22 @@
 async function redisGet(key) {
-  const url = `${process.env.UPSTASH_URL}/get/${encodeURIComponent(key)}`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${process.env.UPSTASH_TOKEN}` },
-  });
+  const res = await fetch(
+    `${process.env.UPSTASH_URL}/get/${encodeURIComponent(key)}`,
+    { headers: { Authorization: `Bearer ${process.env.UPSTASH_TOKEN}` } }
+  );
   const data = await res.json();
   if (!data.result) return null;
   try { return JSON.parse(data.result); } catch { return null; }
 }
 
 async function redisSet(key, value) {
-  const url = `${process.env.UPSTASH_URL}/set/${encodeURIComponent(key)}`;
-  await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.UPSTASH_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(JSON.stringify(value)),
-  });
+  const encoded = encodeURIComponent(JSON.stringify(value));
+  await fetch(
+    `${process.env.UPSTASH_URL}/set/${encodeURIComponent(key)}/${encoded}`,
+    {
+      method: "GET",
+      headers: { Authorization: `Bearer ${process.env.UPSTASH_TOKEN}` },
+    }
+  );
 }
 
 export default async function handler(req, res) {
@@ -67,30 +66,4 @@ export default async function handler(req, res) {
         if (toArchive) {
           toArchive.status = "Sent";
           toArchive.archivedAt = new Date().toISOString();
-          safeArchived.unshift(toArchive);
-          await redisSet("orders:active", safeActive.filter(o => o.id !== id));
-          await redisSet("orders:archived", safeArchived);
-          const email = (toArchive.email || "").toLowerCase().trim();
-          const name = toArchive.full_name || `${toArchive.first_name || ""} ${toArchive.last_name || ""}`.trim();
-          if (email) {
-            if (!customers[email]) customers[email] = { name, email, orders: [] };
-            customers[email].name = name;
-            customers[email].orders.push({
-              id: toArchive.id,
-              items: toArchive.items || [],
-              archivedAt: toArchive.archivedAt,
-              address: toArchive.address_line1,
-              city: toArchive.city,
-              country: toArchive.country,
-            });
-            await redisSet("customers", customers);
-          }
-        }
-        return res.status(200).json({ ok: true });
-      }
-    }
-    return res.status(400).json({ error: "Invalid request" });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
-}
+          safeArc
