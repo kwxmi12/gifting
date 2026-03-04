@@ -5,7 +5,7 @@ async function redisGet(key) {
   });
   const data = await res.json();
   if (!data.result) return null;
-  return JSON.parse(data.result);
+  try { return JSON.parse(data.result); } catch { return null; }
 }
 
 async function redisSet(key, value) {
@@ -29,36 +29,44 @@ export default async function handler(req, res) {
     if (req.method === "GET") {
       const orders = (await redisGet("orders:active")) || [];
       const archived = (await redisGet("orders:archived")) || [];
-      return res.status(200).json({ orders, archived });
+      return res.status(200).json({
+        orders: Array.isArray(orders) ? orders : [],
+        archived: Array.isArray(archived) ? archived : [],
+      });
     }
     if (req.method === "POST") {
       const { action, order, id } = req.body;
       if (action === "add") {
         const current = (await redisGet("orders:active")) || [];
-        current.push(order);
-        await redisSet("orders:active", current);
+        const safe = Array.isArray(current) ? current : [];
+        safe.push(order);
+        await redisSet("orders:active", safe);
         return res.status(200).json({ ok: true });
       }
       if (action === "update") {
         const active = (await redisGet("orders:active")) || [];
-        await redisSet("orders:active", active.map(o => o.id === order.id ? order : o));
+        const safe = Array.isArray(active) ? active : [];
+        await redisSet("orders:active", safe.map(o => o.id === order.id ? order : o));
         return res.status(200).json({ ok: true });
       }
       if (action === "delete") {
         const active = (await redisGet("orders:active")) || [];
-        await redisSet("orders:active", active.filter(o => o.id !== id));
+        const safe = Array.isArray(active) ? active : [];
+        await redisSet("orders:active", safe.filter(o => o.id !== id));
         return res.status(200).json({ ok: true });
       }
       if (action === "archive") {
         const active = (await redisGet("orders:active")) || [];
         const archived = (await redisGet("orders:archived")) || [];
-        const toArchive = active.find(o => o.id === id);
+        const safeActive = Array.isArray(active) ? active : [];
+        const safeArchived = Array.isArray(archived) ? archived : [];
+        const toArchive = safeActive.find(o => o.id === id);
         if (toArchive) {
           toArchive.status = "Sent";
           toArchive.archivedAt = new Date().toISOString();
-          archived.unshift(toArchive);
-          await redisSet("orders:active", active.filter(o => o.id !== id));
-          await redisSet("orders:archived", archived);
+          safeArchived.unshift(toArchive);
+          await redisSet("orders:active", safeActive.filter(o => o.id !== id));
+          await redisSet("orders:archived", safeArchived);
         }
         return res.status(200).json({ ok: true });
       }
