@@ -1,39 +1,37 @@
-async function redisGet(key) {
-  const res = await fetch(
-    `${process.env.UPSTASH_URL}/get/${encodeURIComponent(key)}`,
-    { headers: { Authorization: `Bearer ${process.env.UPSTASH_TOKEN}` } }
-  );
-  const data = await res.json();
-  if (!data.result) return null;
-  try { return JSON.parse(data.result); } catch { return null; }
-}
+const handler = async (req, res) => {
+  const redisGet = async (key) => {
+    const r = await fetch(
+      `${process.env.UPSTASH_URL}/get/${encodeURIComponent(key)}`,
+      { headers: { Authorization: `Bearer ${process.env.UPSTASH_TOKEN}` } }
+    );
+    const d = await r.json();
+    if (!d.result) return null;
+    try { return JSON.parse(d.result); } catch { return null; }
+  };
 
-async function redisSet(key, value) {
-  const encoded = encodeURIComponent(JSON.stringify(value));
-  await fetch(
-    `${process.env.UPSTASH_URL}/set/${encodeURIComponent(key)}/${encoded}`,
-    {
-      method: "GET",
-      headers: { Authorization: `Bearer ${process.env.UPSTASH_TOKEN}` },
-    }
-  );
-}
+  const redisSet = async (key, value) => {
+    await fetch(
+      `${process.env.UPSTASH_URL}/set/${encodeURIComponent(key)}/${encodeURIComponent(JSON.stringify(value))}`,
+      { method: "GET", headers: { Authorization: `Bearer ${process.env.UPSTASH_TOKEN}` } }
+    );
+  };
 
-async function handler(req, res) {
   const password = req.method === "GET" ? req.query.password : req.body?.password;
   if (password !== process.env.APP_PASSWORD) {
-    return res.status(401).json({ error: "Unauthorized" });
+    res.status(401).json({ error: "Unauthorized" });
+    return;
   }
   try {
     if (req.method === "GET") {
       const orders = (await redisGet("orders:active")) || [];
       const archived = (await redisGet("orders:archived")) || [];
       const customers = (await redisGet("customers")) || {};
-      return res.status(200).json({
+      res.status(200).json({
         orders: Array.isArray(orders) ? orders : [],
         archived: Array.isArray(archived) ? archived : [],
         customers,
       });
+      return;
     }
     if (req.method === "POST") {
       const { action, order, id } = req.body;
@@ -42,19 +40,22 @@ async function handler(req, res) {
         const safe = Array.isArray(current) ? current : [];
         safe.push(order);
         await redisSet("orders:active", safe);
-        return res.status(200).json({ ok: true });
+        res.status(200).json({ ok: true });
+        return;
       }
       if (action === "update") {
         const active = (await redisGet("orders:active")) || [];
         const safe = Array.isArray(active) ? active : [];
         await redisSet("orders:active", safe.map(o => o.id === order.id ? order : o));
-        return res.status(200).json({ ok: true });
+        res.status(200).json({ ok: true });
+        return;
       }
       if (action === "delete") {
         const active = (await redisGet("orders:active")) || [];
         const safe = Array.isArray(active) ? active : [];
         await redisSet("orders:active", safe.filter(o => o.id !== id));
-        return res.status(200).json({ ok: true });
+        res.status(200).json({ ok: true });
+        return;
       }
       if (action === "archive") {
         const active = (await redisGet("orders:active")) || [];
@@ -77,13 +78,14 @@ async function handler(req, res) {
           await redisSet("orders:archived", safeArchived);
           await redisSet("customers", customers);
         }
-        return res.status(200).json({ ok: true });
+        res.status(200).json({ ok: true });
+        return;
       }
     }
-    return res.status(400).json({ error: "Bad request" });
+    res.status(400).json({ error: "Bad request" });
   } catch (err) {
-    return res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error" });
   }
-}
+};
 
 module.exports = handler;
