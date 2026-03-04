@@ -57,4 +57,40 @@ export default async function handler(req, res) {
         await redisSet("orders:active", safe.filter(o => o.id !== id));
         return res.status(200).json({ ok: true });
       }
-      if (action === "archi
+      if (action === "archive") {
+        const active = (await redisGet("orders:active")) || [];
+        const archived = (await redisGet("orders:archived")) || [];
+        const customers = (await redisGet("customers")) || {};
+        const safeActive = Array.isArray(active) ? active : [];
+        const safeArchived = Array.isArray(archived) ? archived : [];
+        const toArchive = safeActive.find(o => o.id === id);
+        if (toArchive) {
+          toArchive.status = "Sent";
+          toArchive.archivedAt = new Date().toISOString();
+          safeArchived.unshift(toArchive);
+          await redisSet("orders:active", safeActive.filter(o => o.id !== id));
+          await redisSet("orders:archived", safeArchived);
+          const email = (toArchive.email || "").toLowerCase().trim();
+          const name = toArchive.full_name || `${toArchive.first_name || ""} ${toArchive.last_name || ""}`.trim();
+          if (email) {
+            if (!customers[email]) customers[email] = { name, email, orders: [] };
+            customers[email].name = name;
+            customers[email].orders.push({
+              id: toArchive.id,
+              items: toArchive.items || [],
+              archivedAt: toArchive.archivedAt,
+              address: toArchive.address_line1,
+              city: toArchive.city,
+              country: toArchive.country,
+            });
+            await redisSet("customers", customers);
+          }
+        }
+        return res.status(200).json({ ok: true });
+      }
+    }
+    return res.status(400).json({ error: "Invalid request" });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
