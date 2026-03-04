@@ -66,4 +66,23 @@ export default async function handler(req, res) {
         if (toArchive) {
           toArchive.status = "Sent";
           toArchive.archivedAt = new Date().toISOString();
-          safeArc
+          safeArchived.unshift(toArchive);
+          const remaining = safeActive.filter(o => o.id !== id);
+          // Update customer history
+          const name = toArchive.full_name || `${toArchive.first_name || ""} ${toArchive.last_name || ""}`.trim();
+          if (name) {
+            if (!customers[name]) customers[name] = { orders: [] };
+            customers[name].orders.push({ id: toArchive.id, archivedAt: toArchive.archivedAt, items: toArchive.items });
+          }
+          await redisSet("orders:active", remaining);
+          await redisSet("orders:archived", safeArchived);
+          await redisSet("customers", customers);
+        }
+        return res.status(200).json({ ok: true });
+      }
+    }
+    return res.status(400).json({ error: "Bad request" });
+  } catch (err) {
+    return res.status(500).json({ error: "Server error" });
+  }
+}
