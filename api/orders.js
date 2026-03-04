@@ -1,6 +1,9 @@
 // Upstash Redis - uses env vars auto-added by Vercel/Upstash integration
 // Variable names: KV_REST_API_URL and KV_REST_API_TOKEN
 
+// Upstash Redis - uses env vars auto-added by Vercel/Upstash integration
+// Variable names: KV_REST_API_URL and KV_REST_API_TOKEN
+
 async function redisGet(key) {
   const url = `${process.env.KV_REST_API_URL}/get/${encodeURIComponent(key)}`;
   const res = await fetch(url, {
