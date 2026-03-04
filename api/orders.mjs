@@ -1,7 +1,7 @@
 async function redisGet(key) {
-  const url = `${process.env.KV_REST_API_URL}/get/${encodeURIComponent(key)}`;
+  const url = `${process.env.UPSTASH_REDIS_REST_URL}/get/${encodeURIComponent(key)}`;
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
+    headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}` },
   });
   const data = await res.json();
   if (!data.result) return null;
@@ -9,11 +9,11 @@ async function redisGet(key) {
 }
 
 async function redisSet(key, value) {
-  const url = `${process.env.KV_REST_API_URL}/set/${encodeURIComponent(key)}`;
+  const url = `${process.env.UPSTASH_REDIS_REST_URL}/set/${encodeURIComponent(key)}`;
   await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
+      Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(JSON.stringify(value)),
