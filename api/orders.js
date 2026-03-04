@@ -68,7 +68,6 @@ export default async function handler(req, res) {
           toArchive.archivedAt = new Date().toISOString();
           safeArchived.unshift(toArchive);
           const remaining = safeActive.filter(o => o.id !== id);
-          // Update customer history
           const name = toArchive.full_name || `${toArchive.first_name || ""} ${toArchive.last_name || ""}`.trim();
           if (name) {
             if (!customers[name]) customers[name] = { orders: [] };
@@ -83,6 +82,9 @@ export default async function handler(req, res) {
     }
     return res.status(400).json({ error: "Bad request" });
   } catch (err) {
+    return res.status(500).json({ error: "Server error" });
+  }
+}
     return res.status(500).json({ error: "Server error" });
   }
 }
