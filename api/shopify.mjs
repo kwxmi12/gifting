@@ -35,7 +35,6 @@ async function findOrUpdateCustomer(order) {
   if (searchData.customers && searchData.customers.length > 0) {
     const customer = searchData.customers[0];
     const existing = customer.default_address || {};
-
     const addressChanged =
       existing.address1 !== newAddress.address1 ||
       existing.city !== newAddress.city ||
@@ -47,7 +46,6 @@ async function findOrUpdateCustomer(order) {
         address: { ...newAddress, default: true },
       });
     }
-
     return customer.id;
   } else {
     const { data: newCustomer } = await shopifyFetch("/customers.json", "POST", {
@@ -64,59 +62,72 @@ async function findOrUpdateCustomer(order) {
   }
 }
 
-// Extract size from item string e.g. "Size M" "M" "XL"
 function extractSize(text) {
   const match = text.match(/\b(XXS|XS|S|M|L|XL|XXL|XXXL|\d+)\b/i);
   return match ? match[1].toUpperCase() : null;
 }
 
-// Strip size words from item name
 function stripSize(text) {
   return text
+    .replace(/\s*-\s*size\s+\w+/gi, "")
     .replace(/\b(size|sz)\b/gi, "")
     .replace(/\b(XXS|XS|S|M|L|XL|XXL|XXXL)\b/gi, "")
     .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\s*-\s*$/, "")
     .trim();
 }
 
-async function resolveLineItem(itemText) {
+// Simple fuzzy match — score based on how many words overlap
+function fuzzyScore(query, title) {
+  const qWords = query.toLowerCase().split(/\s+/);
+  const tWords = title.toLowerCase().split(/\s+/);
+  let score = 0;
+  for (const qw of qWords) {
+    if (tWords.some(tw => tw.includes(qw) || qw.includes(tw))) score++;
+  }
+  return score / qWords.length;
+}
+
+async function getAllProducts() {
+  const { data } = await shopifyFetch("/products.json?limit=250&fields=id,title,variants");
+  return data.products || [];
+}
+
+async function resolveLineItem(itemText, allProducts) {
   const size = extractSize(itemText);
   const cleanName = stripSize(itemText);
 
-  // Search Shopify products
-  const { data } = await shopifyFetch(
-    `/products.json?title=${encodeURIComponent(cleanName)}&limit=5`
-  );
+  // Find best matching product using fuzzy scoring
+  let bestProduct = null;
+  let bestScore = 0;
 
-  if (!data.products || data.products.length === 0) {
-    // No match — use custom line item
-    return {
-      title: size ? `${cleanName} - Size ${size}` : cleanName,
-      quantity: 1,
-      price: "0.00",
-      requires_shipping: true,
-    };
+  for (const product of allProducts) {
+    const score = fuzzyScore(cleanName, product.title);
+    if (score > bestScore) {
+      bestScore = score;
+      bestProduct = product;
+    }
   }
 
-  const product = data.products[0];
+  // Only use product match if score is reasonable (>40% word overlap)
+  if (bestProduct && bestScore >= 0.4) {
+    let variant = null;
+    if (size) {
+      variant = bestProduct.variants.find(v =>
+        v.option1?.toUpperCase() === size ||
+        v.option2?.toUpperCase() === size ||
+        v.title?.toUpperCase().includes(size)
+      );
+    }
+    if (!variant) variant = bestProduct.variants[0];
 
-  // Try to find variant matching the size
-  let variant = null;
-  if (size) {
-    variant = product.variants.find(v =>
-      v.option1?.toUpperCase() === size ||
-      v.option2?.toUpperCase() === size ||
-      v.title?.toUpperCase().includes(size)
-    );
+    return { variant_id: variant.id, quantity: 1 };
   }
 
-  // Fall back to first variant
-  if (!variant) variant = product.variants[0];
-
-  return {
-    variant_id: variant.id,
-    quantity: 1,
-  };
+  // No good match — use custom line item
+  const title = size ? `${cleanName} - Size ${size}` : cleanName;
+  return { title, quantity: 1, price: "0.00", requires_shipping: true };
 }
 
 export default async function handler(req, res) {
@@ -130,11 +141,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const customerId = await findOrUpdateCustomer(order);
+    const [customerId, allProducts] = await Promise.all([
+      findOrUpdateCustomer(order),
+      getAllProducts(),
+    ]);
 
-    // Resolve all line items with product matching
     const items = order.items && order.items.length > 0 ? order.items : ["Gift"];
-    const lineItems = await Promise.all(items.map(resolveLineItem));
+    const lineItems = await Promise.all(items.map(item => resolveLineItem(item, allProducts)));
 
     const draftOrder = {
       draft_order: {
@@ -153,7 +166,6 @@ export default async function handler(req, res) {
           description: "Gift",
           value_type: "percentage",
           value: "100.0",
-          amount: "100.0",
           title: "Gift",
         },
         note: `Gifting Studio order · ${order.notes || ""}`.trim(),
