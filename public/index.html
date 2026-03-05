@@ -83,6 +83,17 @@
     .tracking-live { font-size: 11px; color: #6ae06a; }
     .tracking-pending { font-size: 11px; color: #707080; font-style: italic; }
     .count-badge { background: #2a2a3a; border-radius: 4px; padding: 1px 6px; font-size: 11px; color: #c8a96e; font-weight: 600; }
+    .archive-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 900px; }
+    .archive-table th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #606070; font-weight: 600; padding: 9px 10px; border-bottom: 2px solid #2a2a35; white-space: nowrap; background: #13131a; cursor: pointer; user-select: none; }
+    .archive-table th:hover { color: #c8a96e; }
+    .archive-table th.sort-asc::after { content: " ↑"; color: #c8a96e; }
+    .archive-table th.sort-desc::after { content: " ↓"; color: #c8a96e; }
+    .archive-table td { padding: 7px 10px; border-bottom: 1px solid #1e1e28; vertical-align: middle; color: #e0ddd8; white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+    .archive-table tr:hover td { background: #1a1a24; }
+    .btn-unarchive { background: transparent; border: 1px solid #4a4a5a; border-radius: 6px; color: #a0a0b8; font-size: 11px; padding: 3px 8px; cursor: pointer; font-family: inherit; }
+    .btn-unarchive:hover { border-color: #c8a96e; color: #c8a96e; }
+    .btn-del-arch { background: transparent; border: 1px solid #5a2a2a; border-radius: 6px; color: #c06060; font-size: 11px; padding: 3px 6px; cursor: pointer; font-family: inherit; margin-left: 4px; }
+    .btn-del-arch:hover { background: #3a1a1a; }
     .archived-card:hover { opacity: 1; }
     @media (max-width: 500px) {
       .login-card { padding: 32px 24px; }
@@ -181,6 +192,29 @@
   </div>
 
   <div id="orders-list" style="display:flex;flex-direction:column;gap:14px;"></div>
+
+<div id="archive-table-container" style="display:none;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div style="font-size:12px;color:#606070;">Click column headers to sort · <span id="archive-table-count" style="color:#c8a96e;"></span></div>
+    <button class="btn-ghost" style="font-size:11px;" onclick="exportArchiveCSV()">↓ Export CSV</button>
+  </div>
+  <div style="overflow-x:auto;border-radius:12px;border:1px solid #2a2a35;">
+    <table class="archive-table" id="archive-table">
+      <thead>
+        <tr>
+          <th onclick="sortArchive('date')" id="arch-th-date">Date Archived</th>
+          <th onclick="sortArchive('name')" id="arch-th-name">Customer</th>
+          <th onclick="sortArchive('email')" id="arch-th-email">Email</th>
+          <th onclick="sortArchive('country')" id="arch-th-country">Country</th>
+          <th onclick="sortArchive('items')" id="arch-th-items">Products</th>
+          <th>Address</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="archive-tbody"></tbody>
+    </table>
+  </div>
+</div>
 
 <div id="creators-container" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -309,8 +343,10 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
     });
     document.getElementById("input-card").style.display = view === "active" ? "block" : "none";
     document.getElementById("creators-container").style.display = view === "creators" ? "block" : "none";
-    document.getElementById("orders-list").style.display = view === "creators" ? "none" : "flex";
+    document.getElementById("archive-table-container").style.display = view === "archived" ? "block" : "none";
+    document.getElementById("orders-list").style.display = (view === "creators" || view === "archived") ? "none" : "flex";
     if (view === "creators") renderCreatorsTable();
+    else if (view === "archived") renderArchiveTable();
     else renderOrders();
   }
 
@@ -608,6 +644,75 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
   function hideError(id) { const el = document.getElementById(id); if (el) el.style.display = "none"; }
   function showSaving(on) { document.getElementById("saving-indicator").className = "saving-indicator" + (on ? " show" : ""); }
 
+  // ── Archive table ─────────────────────────────────────
+  let archiveSortKey = 'date';
+  let archiveSortDir = 'desc';
+
+  function sortArchive(key) {
+    if (archiveSortKey === key) archiveSortDir = archiveSortDir === 'asc' ? 'desc' : 'asc';
+    else { archiveSortKey = key; archiveSortDir = key === 'date' ? 'desc' : 'asc'; }
+    renderArchiveTable();
+  }
+
+  function renderArchiveTable() {
+    const tbody = document.getElementById('archive-tbody');
+    if (!tbody) return;
+    document.getElementById('archive-table-count').textContent = archived.length + ' orders';
+    // Update sort headers
+    ['date','name','email','country','items'].forEach(k => {
+      const th = document.getElementById('arch-th-' + k);
+      if (!th) return;
+      th.className = archiveSortKey === k ? ('sort-' + archiveSortDir) : '';
+    });
+    const sorted = [...archived].sort((a, b) => {
+      let av, bv;
+      if (archiveSortKey === 'date') { av = a.archivedAt || 0; bv = b.archivedAt || 0; }
+      else if (archiveSortKey === 'name') { av = (a.full_name||'').toLowerCase(); bv = (b.full_name||'').toLowerCase(); }
+      else if (archiveSortKey === 'email') { av = (a.email||'').toLowerCase(); bv = (b.email||'').toLowerCase(); }
+      else if (archiveSortKey === 'country') { av = (a.country||'').toLowerCase(); bv = (b.country||'').toLowerCase(); }
+      else if (archiveSortKey === 'items') { av = (a.items||[]).length; bv = (b.items||[]).length; }
+      if (av < bv) return archiveSortDir === 'asc' ? -1 : 1;
+      if (av > bv) return archiveSortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    tbody.innerHTML = sorted.map(o => {
+      const date = o.archivedAt ? new Date(o.archivedAt).toLocaleDateString('en-GB') : '—';
+      const items = (o.items||[]).join(', ') || '—';
+      const addr = [o.address_line1, o.city, o.postcode].filter(Boolean).join(', ') || '—';
+      const country = o.country ? `${o.country} <span style="color:#606070;font-size:10px;">(${o.country_code||''})</span>` : '—';
+      const src = o.source ? `<span style="background:#1e1e2a;border-radius:4px;padding:1px 5px;font-size:10px;color:#606070;">${o.source}</span>` : '';
+      return `<tr>
+        <td style="color:#707080;">${date}</td>
+        <td><strong style="color:#e8e5e0;">${o.full_name||'—'}</strong> ${src}</td>
+        <td style="color:#707080;font-size:11px;" title="${o.email||''}">${o.email||'—'}</td>
+        <td>${country}</td>
+        <td title="${items}" style="color:#b0b0c8;">${items}</td>
+        <td style="color:#606070;font-size:11px;" title="${addr}">${addr}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn-unarchive" onclick="unarchiveOrder(${o.id})">↩ Restore</button>
+          <button class="btn-del-arch" onclick="deleteArchived(${o.id})">✕</button>
+        </td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="7" style="text-align:center;color:#404050;padding:24px;">No archived orders yet</td></tr>';
+  }
+
+  function exportArchiveCSV() {
+    const rows = [['Date Archived','Customer','Email','Phone','Address','City','Postcode','Country','Products','Source']];
+    archived.forEach(o => {
+      rows.push([
+        o.archivedAt ? new Date(o.archivedAt).toLocaleDateString('en-GB') : '',
+        o.full_name||'', o.email||'', o.phone||'',
+        o.address_line1||'', o.city||'', o.postcode||'', o.country||'',
+        (o.items||[]).join('; '), o.source||'',
+      ]);
+    });
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'gifting-studio-archive.csv';
+    a.click();
+  }
+
   // ── Creators spreadsheet ──────────────────────────────
   let creatorMeta = {}; // { orderId: { platform1, username1, platform2, username2 } }
 
@@ -657,15 +762,32 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
     return platform === 'tiktok' ? `https://tiktok.com/@${username}` : `https://instagram.com/${username}`;
   }
 
+  let expandedGroups = new Set();
+
+  function toggleGroup(groupId) {
+    if (expandedGroups.has(groupId)) expandedGroups.delete(groupId);
+    else expandedGroups.add(groupId);
+    renderCreatorsTable();
+  }
+
+  function clearSocial(id, key) {
+    setMeta(id, key, '');
+    renderCreatorsTable();
+  }
+
   function renderCreatorsTable() {
     loadCreatorMeta();
     const tbody = document.getElementById('creators-tbody');
     if (!tbody) return;
     const groups = groupCreators(archived);
-    let html = '';
-    groups.forEach(group => {
+    let rows = '';
+    groups.forEach((group, gi) => {
       const totalItems = group.reduce((s, o) => s + (o.items||[]).length, 0);
-      group.forEach((o, idx) => {
+      const isMulti = group.length > 1;
+      const expanded = expandedGroups.has(gi);
+      const displayOrders = isMulti && !expanded ? [group[0]] : group;
+
+      displayOrders.forEach((o, idx) => {
         const isFirst = idx === 0;
         const dateSent = o.archivedAt ? new Date(o.archivedAt).toLocaleDateString('en-GB') : '—';
         const orderNum = getMeta(o.id,'orderNum') || '';
@@ -674,22 +796,34 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
         const u1 = getMeta(o.id,'username1') || '';
         const p2 = getMeta(o.id,'platform2') || 'instagram';
         const u2 = getMeta(o.id,'username2') || '';
+
         const u1html = u1
-          ? `<a href="${profileUrl(p1,u1)}" target="_blank" class="social-link">${platformIcon(p1)} @${u1}</a>`
-          : `<input class="cell-input" placeholder="username" value="${u1}" onchange="setMeta(${o.id},'username1',this.value);renderCreatorsTable()" style="width:110px;" />`;
+          ? `<a href="${profileUrl(p1,u1)}" target="_blank" class="social-link">${platformIcon(p1)} @${u1}</a>
+             <button onclick="clearSocial(${o.id},'username1')" style="background:none;border:none;color:#505060;cursor:pointer;font-size:10px;margin-left:2px;" title="Clear">✕</button>`
+          : `<input class="cell-input" placeholder="username" value="" onchange="setMeta(${o.id},'username1',this.value);renderCreatorsTable()" style="width:100px;" />`;
+
         const u2html = u2
-          ? `<a href="${profileUrl(p2,u2)}" target="_blank" class="social-link">${platformIcon(p2)} @${u2}</a>`
-          : `<input class="cell-input" placeholder="username" value="${u2}" onchange="setMeta(${o.id},'username2',this.value);renderCreatorsTable()" style="width:110px;" />`;
+          ? `<a href="${profileUrl(p2,u2)}" target="_blank" class="social-link">${platformIcon(p2)} @${u2}</a>
+             <button onclick="clearSocial(${o.id},'username2')" style="background:none;border:none;color:#505060;cursor:pointer;font-size:10px;margin-left:2px;" title="Clear">✕</button>`
+          : `<input class="cell-input" placeholder="username" value="" onchange="setMeta(${o.id},'username2',this.value);renderCreatorsTable()" style="width:100px;" />`;
+
         const trackHtml = tracking
           ? `<a href="${tracking}" target="_blank" class="tracking-live">📦 Track</a>`
           : `<span class="tracking-pending">In progress</span>`;
-        html += `<tr class="${isFirst && group.length > 1 ? 'grouped-first' : ''}">
-          <td title="${o.full_name||''}">${o.full_name || '—'}${isFirst && group.length > 1 ? ` <span class="count-badge">×${group.length}</span>` : ''}</td>
-          <td title="${o.email||''}" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:#707080;">${o.email||'—'}</td>
+
+        const nameCell = isFirst && isMulti
+          ? `<span style="cursor:pointer;color:#c8a96e;" onclick="toggleGroup(${gi})" title="${expanded ? 'Collapse' : 'Expand orders'}">
+               ${o.full_name||'—'} <span class="count-badge">×${group.length} ${expanded ? '▲' : '▼'}</span>
+             </span>`
+          : `<span style="color:#909090;font-size:11px;padding-left:10px;">↳ ${o.full_name||'—'}</span>`;
+
+        rows += `<tr style="${isFirst && isMulti ? 'border-top:1px solid #c8a96e33;' : ''}">
+          <td>${nameCell}</td>
+          <td title="${o.email||''}" style="font-size:11px;color:#707080;">${o.email||'—'}</td>
           <td title="${(o.items||[]).join(', ')}" style="color:#b0b0c8;">${(o.items||[]).join(', ')||'—'}</td>
           <td><input class="cell-input" placeholder="—" value="${orderNum}" onchange="setMeta(${o.id},'orderNum',this.value)" style="width:75px;" /></td>
           <td style="color:#707080;">${dateSent}</td>
-          <td>${trackHtml}<br><input class="cell-input" placeholder="tracking URL" value="${tracking}" onchange="setMeta(${o.id},'tracking',this.value);renderCreatorsTable()" style="width:95px;font-size:10px;color:#505060;" /></td>
+          <td>${trackHtml}<br><input class="cell-input" placeholder="paste URL" value="${tracking}" onchange="setMeta(${o.id},'tracking',this.value);renderCreatorsTable()" style="width:90px;font-size:10px;color:#505060;" /></td>
           <td><select class="platform-select" onchange="setMeta(${o.id},'platform1',this.value)">
             <option value="instagram" ${p1==='instagram'?'selected':''}>📸 IG</option>
             <option value="tiktok" ${p1==='tiktok'?'selected':''}>🎵 TT</option>
@@ -700,11 +834,11 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
             <option value="tiktok" ${p2==='tiktok'?'selected':''}>🎵 TT</option>
           </select></td>
           <td>${u2html}</td>
-          <td style="text-align:center;"><span class="count-badge">${isFirst ? totalItems : (o.items||[]).length}</span></td>
+          <td style="text-align:center;"><span class="count-badge">${isFirst && isMulti ? totalItems : (o.items||[]).length}</span></td>
         </tr>`;
       });
     });
-    tbody.innerHTML = html || '<tr><td colspan="11" style="text-align:center;color:#404050;padding:24px;">No archived orders yet</td></tr>';
+    tbody.innerHTML = rows || '<tr><td colspan="11" style="text-align:center;color:#404050;padding:24px;">No archived orders yet</td></tr>';
   }
 
   function exportCreatorsCSV() {
