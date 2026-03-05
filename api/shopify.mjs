@@ -182,7 +182,7 @@ export default async function handler(req, res) {
 
     const { status, data } = await shopifyFetch("/draft_orders.json", "POST", draftOrder);
 
-    if (status !== 201) {
+    if (status !== 201 && status !== 202) {
       return res.status(status).json({ error: `Shopify ${status}: ${JSON.stringify(data)}` });
     }
 
