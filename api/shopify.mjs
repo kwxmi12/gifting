@@ -16,49 +16,49 @@ async function shopifyFetch(path, method = "GET", body = null) {
 
 async function findOrUpdateCustomer(order) {
   if (!order.email) return null;
-
-  const { data: searchData } = await shopifyFetch(
-    `/customers/search.json?query=email:${encodeURIComponent(order.email)}&limit=1`
-  );
-
-  const newAddress = {
-    address1: order.address_line1 || "",
-    city: order.city || "",
-    zip: order.postcode || "",
-    country_code: order.country_code || "",
-    country: order.country || "",
-    phone: order.phone || "",
-    first_name: order.first_name || "",
-    last_name: order.last_name || "",
-  };
-
-  if (searchData.customers && searchData.customers.length > 0) {
-    const customer = searchData.customers[0];
-    const existing = customer.default_address || {};
-    const addressChanged =
-      existing.address1 !== newAddress.address1 ||
-      existing.city !== newAddress.city ||
-      existing.zip !== newAddress.zip ||
-      existing.country_code !== newAddress.country_code;
-
-    if (addressChanged) {
-      await shopifyFetch(`/customers/${customer.id}/addresses.json`, "POST", {
-        address: { ...newAddress, default: true },
+  try {
+    const { data: searchData } = await shopifyFetch(
+      `/customers/search.json?query=email:${encodeURIComponent(order.email)}&limit=1`
+    );
+    const newAddress = {
+      address1: order.address_line1 || "",
+      city: order.city || "",
+      zip: order.postcode || "",
+      country_code: order.country_code || "",
+      country: order.country || "",
+      phone: order.phone || "",
+      first_name: order.first_name || "",
+      last_name: order.last_name || "",
+    };
+    if (searchData.customers && searchData.customers.length > 0) {
+      const customer = searchData.customers[0];
+      const existing = customer.default_address || {};
+      const addressChanged =
+        existing.address1 !== newAddress.address1 ||
+        existing.city !== newAddress.city ||
+        existing.zip !== newAddress.zip ||
+        existing.country_code !== newAddress.country_code;
+      if (addressChanged) {
+        await shopifyFetch(`/customers/${customer.id}/addresses.json`, "POST", {
+          address: { ...newAddress, default: true },
+        });
+      }
+      return customer.id;
+    } else {
+      const { data: newCustomer } = await shopifyFetch("/customers.json", "POST", {
+        customer: {
+          first_name: order.first_name || "",
+          last_name: order.last_name || "",
+          email: order.email,
+          phone: order.phone || "",
+          verified_email: true,
+          addresses: [newAddress],
+        },
       });
+      return newCustomer.customer?.id || null;
     }
-    return customer.id;
-  } else {
-    const { data: newCustomer } = await shopifyFetch("/customers.json", "POST", {
-      customer: {
-        first_name: order.first_name || "",
-        last_name: order.last_name || "",
-        email: order.email,
-        phone: order.phone || "",
-        verified_email: true,
-        addresses: [newAddress],
-      },
-    });
-    return newCustomer.customer?.id || null;
+  } catch(e) {
+    return null; // Don't fail the whole order if customer lookup fails
   }
 }
 
@@ -78,10 +78,10 @@ function stripSize(text) {
     .trim();
 }
 
-// Simple fuzzy match — score based on how many words overlap
 function fuzzyScore(query, title) {
-  const qWords = query.toLowerCase().split(/\s+/);
+  const qWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
   const tWords = title.toLowerCase().split(/\s+/);
+  if (qWords.length === 0) return 0;
   let score = 0;
   for (const qw of qWords) {
     if (tWords.some(tw => tw.includes(qw) || qw.includes(tw))) score++;
@@ -90,15 +90,18 @@ function fuzzyScore(query, title) {
 }
 
 async function getAllProducts() {
-  const { data } = await shopifyFetch("/products.json?limit=250&fields=id,title,variants");
-  return data.products || [];
+  try {
+    const { data } = await shopifyFetch("/products.json?limit=250&fields=id,title,variants");
+    return data.products || [];
+  } catch(e) {
+    return [];
+  }
 }
 
 async function resolveLineItem(itemText, allProducts) {
   const size = extractSize(itemText);
   const cleanName = stripSize(itemText);
 
-  // Find best matching product using fuzzy scoring
   let bestProduct = null;
   let bestScore = 0;
 
@@ -110,8 +113,8 @@ async function resolveLineItem(itemText, allProducts) {
     }
   }
 
-  // Only use product match if score is reasonable (>40% word overlap)
-  if (bestProduct && bestScore >= 0.4) {
+  // Use product match if any meaningful overlap (lowered threshold to 0.25)
+  if (bestProduct && bestScore >= 0.25) {
     let variant = null;
     if (size) {
       variant = bestProduct.variants.find(v =>
@@ -121,11 +124,10 @@ async function resolveLineItem(itemText, allProducts) {
       );
     }
     if (!variant) variant = bestProduct.variants[0];
-
     return { variant_id: variant.id, quantity: 1 };
   }
 
-  // No good match — use custom line item
+  // Fall back to custom line item
   const title = size ? `${cleanName} - Size ${size}` : cleanName;
   return { title, quantity: 1, price: "0.00", requires_shipping: true };
 }
