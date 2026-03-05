@@ -17,7 +17,6 @@ async function shopifyFetch(path, method = "GET", body = null) {
 async function findOrUpdateCustomer(order) {
   if (!order.email) return null;
 
-  // Search for existing customer by email
   const { data: searchData } = await shopifyFetch(
     `/customers/search.json?query=email:${encodeURIComponent(order.email)}&limit=1`
   );
@@ -37,7 +36,6 @@ async function findOrUpdateCustomer(order) {
     const customer = searchData.customers[0];
     const existing = customer.default_address || {};
 
-    // Check if address is different
     const addressChanged =
       existing.address1 !== newAddress.address1 ||
       existing.city !== newAddress.city ||
@@ -45,7 +43,6 @@ async function findOrUpdateCustomer(order) {
       existing.country_code !== newAddress.country_code;
 
     if (addressChanged) {
-      // Add new address to customer
       await shopifyFetch(`/customers/${customer.id}/addresses.json`, "POST", {
         address: { ...newAddress, default: true },
       });
@@ -53,18 +50,73 @@ async function findOrUpdateCustomer(order) {
 
     return customer.id;
   } else {
-    // Create new customer
     const { data: newCustomer } = await shopifyFetch("/customers.json", "POST", {
       customer: {
         first_name: order.first_name || "",
         last_name: order.last_name || "",
         email: order.email,
         phone: order.phone || "",
+        verified_email: true,
         addresses: [newAddress],
       },
     });
     return newCustomer.customer?.id || null;
   }
+}
+
+// Extract size from item string e.g. "Size M" "M" "XL"
+function extractSize(text) {
+  const match = text.match(/\b(XXS|XS|S|M|L|XL|XXL|XXXL|\d+)\b/i);
+  return match ? match[1].toUpperCase() : null;
+}
+
+// Strip size words from item name
+function stripSize(text) {
+  return text
+    .replace(/\b(size|sz)\b/gi, "")
+    .replace(/\b(XXS|XS|S|M|L|XL|XXL|XXXL)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function resolveLineItem(itemText) {
+  const size = extractSize(itemText);
+  const cleanName = stripSize(itemText);
+
+  // Search Shopify products
+  const { data } = await shopifyFetch(
+    `/products.json?title=${encodeURIComponent(cleanName)}&limit=5`
+  );
+
+  if (!data.products || data.products.length === 0) {
+    // No match — use custom line item
+    return {
+      title: size ? `${cleanName} - Size ${size}` : cleanName,
+      quantity: 1,
+      price: "0.00",
+      requires_shipping: true,
+    };
+  }
+
+  const product = data.products[0];
+
+  // Try to find variant matching the size
+  let variant = null;
+  if (size) {
+    variant = product.variants.find(v =>
+      v.option1?.toUpperCase() === size ||
+      v.option2?.toUpperCase() === size ||
+      v.title?.toUpperCase().includes(size)
+    );
+  }
+
+  // Fall back to first variant
+  if (!variant) variant = product.variants[0];
+
+  return {
+    variant_id: variant.id,
+    quantity: 1,
+  };
 }
 
 export default async function handler(req, res) {
@@ -80,21 +132,9 @@ export default async function handler(req, res) {
   try {
     const customerId = await findOrUpdateCustomer(order);
 
-    const lineItems = (order.items || []).map(item => ({
-      title: item,
-      quantity: 1,
-      price: "0.00",
-      requires_shipping: true,
-    }));
-
-    if (lineItems.length === 0) {
-      lineItems.push({
-        title: "Gift",
-        quantity: 1,
-        price: "0.00",
-        requires_shipping: true,
-      });
-    }
+    // Resolve all line items with product matching
+    const items = order.items && order.items.length > 0 ? order.items : ["Gift"];
+    const lineItems = await Promise.all(items.map(resolveLineItem));
 
     const draftOrder = {
       draft_order: {
@@ -121,7 +161,6 @@ export default async function handler(req, res) {
       },
     };
 
-    // Attach customer if found/created
     if (customerId) {
       draftOrder.draft_order.customer = { id: customerId };
       draftOrder.draft_order.email = order.email;
@@ -130,7 +169,7 @@ export default async function handler(req, res) {
     const { status, data } = await shopifyFetch("/draft_orders.json", "POST", draftOrder);
 
     if (status !== 201) {
-      return res.status(status).json({ error: data.errors || "Shopify error" });
+      return res.status(status).json({ error: JSON.stringify(data.errors) || "Shopify error" });
     }
 
     const adminUrl = `https://admin.shopify.com/store/crvdae/draft_orders/${data.draft_order.id}`;
