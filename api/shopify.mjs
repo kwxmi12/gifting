@@ -183,7 +183,7 @@ export default async function handler(req, res) {
     const { status, data } = await shopifyFetch("/draft_orders.json", "POST", draftOrder);
 
     if (status !== 201) {
-      return res.status(status).json({ error: JSON.stringify(data.errors) || "Shopify error" });
+      return res.status(status).json({ error: `Shopify ${status}: ${JSON.stringify(data)}` });
     }
 
     const adminUrl = `https://admin.shopify.com/store/crvdae/draft_orders/${data.draft_order.id}`;
