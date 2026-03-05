@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gifting Studio</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', 'Segoe UI', sans-serif; background: #0f0f11; color: #f0ede8; min-height: 100vh; }
+    #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .login-card { background: #18181d; border: 1px solid #2a2a35; border-radius: 20px; padding: 48px 40px; max-width: 380px; width: 100%; text-align: center; }
+    .login-title { font-family: 'Playfair Display', serif; font-size: 26px; margin-bottom: 6px; }
+    .login-sub { font-size: 13px; color: #606070; margin-bottom: 32px; }
+    .login-input { width: 100%; background: #0f0f11; border: 1px solid #2a2a35; border-radius: 10px; color: #f0ede8; padding: 12px 16px; font-family: inherit; font-size: 15px; outline: none; text-align: center; letter-spacing: 2px; margin-bottom: 14px; transition: border-color 0.2s; }
+    .login-input:focus { border-color: #c8a96e; }
+    .login-error { color: #e07070; font-size: 13px; margin-bottom: 12px; min-height: 18px; }
+    #app-screen { display: none; max-width: 960px; margin: 0 auto; padding: 32px 20px; }
+    .card { background: #18181d; border: 1px solid #2a2a35; border-radius: 16px; }
+    .input-field { background: #0f0f11; border: 1px solid #2a2a35; border-radius: 10px; color: #f0ede8; padding: 10px 14px; font-family: inherit; font-size: 14px; outline: none; transition: border-color 0.2s; width: 100%; }
+    .input-field:focus { border-color: #c8a96e; }
+    select.input-field { cursor: pointer; }
+    .btn-primary { background: linear-gradient(135deg, #c8a96e, #e8c98e); color: #0f0f11; border: none; border-radius: 10px; padding: 12px 24px; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s, transform 0.1s; font-family: inherit; white-space: nowrap; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-ghost { background: transparent; border: 1px solid #2a2a35; border-radius: 8px; padding: 6px 12px; color: #a0a0b0; cursor: pointer; font-size: 12px; transition: all 0.2s; font-family: inherit; white-space: nowrap; }
+    .btn-ghost:hover { border-color: #c8a96e; color: #c8a96e; }
+    .btn-danger { background: transparent; border: 1px solid #4a2020; border-radius: 8px; padding: 6px 12px; color: #e07070; cursor: pointer; font-size: 12px; transition: all 0.2s; font-family: inherit; }
+    .btn-danger:hover { background: #4a2020; }
+    .btn-success { background: linear-gradient(135deg, #2d6a4f, #40916c); color: #fff; border: none; border-radius: 10px; padding: 12px 24px; font-weight: 600; font-size: 14px; cursor: pointer; font-family: inherit; }
+    .btn-archive { background: linear-gradient(135deg, #4a3a8a, #6a5aaa); color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font-weight: 600; font-size: 12px; cursor: pointer; font-family: inherit; transition: opacity 0.2s; white-space: nowrap; }
+    .btn-archive:hover { opacity: 0.85; }
+    .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #606070; font-weight: 500; margin-bottom: 4px; }
+    .val { font-size: 14px; color: #e0ddd8; }
+    .tag { display: inline-block; background: #23232d; border: 1px solid #3a3a45; border-radius: 20px; padding: 3px 10px; font-size: 12px; color: #c0c0d0; margin: 2px; }
+    textarea { resize: vertical; min-height: 110px; }
+    .tab { padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; font-family: inherit; transition: all 0.2s; }
+    .tab-active { background: #c8a96e; color: #0f0f11; }
+    .tab-inactive { background: transparent; color: #606070; border: 1px solid #2a2a35; }
+    .tab-inactive:hover { color: #c8a96e; border-color: #c8a96e; }
+    .view-tab { padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; font-family: inherit; transition: all 0.2s; }
+    .view-tab-active { background: #23232d; color: #f0ede8; border: 1px solid #3a3a45; }
+    .view-tab-inactive { background: transparent; color: #505060; border: 1px solid transparent; }
+    .view-tab-inactive:hover { color: #c8a96e; }
+    .drop-zone { border: 2px dashed #2a2a35; border-radius: 14px; padding: 40px 20px; text-align: center; transition: all 0.2s; cursor: pointer; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: #c8a96e; background: rgba(200,169,110,0.04); }
+    .source-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; border-radius: 20px; }
+    .badge-img { background: #1a2a3a; color: #6ab0e0; border: 1px solid #2a4a6a; }
+    .badge-txt { background: #1a2a1a; color: #6ae06a; border: 1px solid #2a4a2a; }
+    .archived-badge { background: #2a1a4a; color: #a080e0; border: 1px solid #4a3a6a; }
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+    .modal { background: #18181d; border: 1px solid #2a2a35; border-radius: 16px; padding: 24px; max-width: 620px; width: 100%; }
+    .csv-box { background: #0f0f11; border: 1px solid #2a2a35; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 11px; color: #80c080; white-space: pre; overflow: auto; max-height: 260px; margin: 12px 0; user-select: all; }
+    .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .edit-grid .full { grid-column: 1 / -1; }
+    .order-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .saving-indicator { font-size: 11px; color: #606070; display: none; }
+    .saving-indicator.show { display: inline; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1a1a1f; }
+    ::-webkit-scrollbar-thumb { background: #3a3a45; border-radius: 3px; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .pulse { animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    .archived-card { opacity: 0.7; }
+    .archived-card:hover { opacity: 1; }
+    @media (max-width: 500px) {
+      .login-card { padding: 32px 24px; }
+      .edit-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-title"><img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCADgAOADASIAAhEBAxEB/8QAHAABAAIDAQEBAAAAAAAAAAAAAAgJBQYHBAID/8QAPBAAAQMDAgQEBAMFBwUAAAAAAQACAwQFBgcREiExQQgTUWEiMnGBCRRCFSNykbEXJDNSkqHBFiWDstH/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AhkiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIt/0FxjEMr1Co7fnOU0ePWRn7yd9RL5RqNjyia8jhZv3c4jYb7blBhcIwHNM2klZimM3O7iLlLJTwkxsPo55+EHn0J3Xjy7FckxG6G2ZPZK+0Ve24jqoSziHq0nk4e43CtqxG22C0Y5RUGL01DT2iOMflWUe3lFvqCOu/rz3XNvF/iVqyjQfIpa+BhqrRSvuNFPwjjifGOIgH0c0FpHff2BAVioiICIiDJ4zj98ya7R2nHrRW3Wuk5tgpIXSP23ALiAOTRuNyeQ7rMZtpxneFRslyrFLraoZOTJpoD5RPpxjdu/tvup7eBvD7bjuhNrvMNPD+076ZKqsqAN3OaJHNjZueewa0cum5d67rq+oVww+34rWOzqqtUFjmYYqgXJzRFICPk2d8xPYDc+iCodFuutVLgFLn9b/ZpdKi4Y7L+8i86B8ZhcSeKNvGA5zRy2cQDz2O+250pAREQEREBERAREQEREBERARFuOkOneQanZnTY1j8QD3/HU1MgPlUsQ+aR5/oOpJACDWrPa7lebjDbbRQVVfWzu4YqemidJI8+zWjcrvmD+EHVS/QR1N4NrxuB434KycyTgdvgjBA+hcCpo6MaSYfpXYm0OPULX1sjAKy5TNBqKl3u79Ld+jByHudyd/QQjf4Hb0IAWag2903dptzw3+fGT/suc594UtWsWglq6S30eR0rCTxWqYvlDeexMTw1xPs0O+6siRBVTpbqxqDpReS2x3KohgimIqrTWBzqd7gdnNfGduF3LYlvC73UmtVvEni2ceGC+/kHC35HXeVbZ7VLJu9nmHd72Hlxx8DX/ABctjsCBuN+t+IfQXF9VbTPVx08FsyiOP+63KNm3GR0ZMB87e2/UdvQ1v5jjd5xHJq7HL/RupLjQyGOaInfn1BB6EEbEHuCgxCIiAiIglTpJ4m6LTvw40eN0tG645VR1VRBRwzg+RHC53mNlkcObgDI5oYCCeHq0bFcHvV51A1dzRj62a6ZLe6p3DDBGwv4AT8rGN+GNg9gAOp9V49McKveoWa2/FLBDx1dY/wCKRw+CCMc3yvPZrRz9+QHMgKzTRTSXFNKcdbbrDSMkrpWD89cpGjz6pw9T+lu/Rg5D67khErAPBfm12giqsuv1vx1j9iaaJn5ucDuHbFrAe3Jzl0VngixAMAfmt9LtuZEEQBP02Ur0QQdzbwTZBSQyz4hl9FdCAC2mroDTvPqA9pc0n6hv/KjPm+HZRhN4daMrsdZaawc2snZ8Mg9WOG7Xj3aSFb0tb1GwbGNQMcmsOU2yKtpXg8DiAJIHEbccburXD1/nuEFRaLo3iC0pu2kucyWSse6qt1QDNba3h2FRFvtz7B7eQcPoehC5ygIiICIiAiIgIiICsn8GGmtPgekdFc6im4b3kEbK6se9mz2RuG8UXqA1p3IP6nOVd+F2xl6zGyWaT5K+4QUzue3KSRrT/VW/QxRwwshiYGRxtDWNHQAcgEH2iIgIiICil+ITprDdMRpNR7bTNFfaXNp7iWN5y0zzs1x2HMseQPo8+gUrVq2rtngyDS3KLNUAeXV2mpj3P6XeW4td9iAfsgqQREQEREFgP4f+nsOP6ZS5tWU+1zyF58p7hzZSRu4WtH8Tg53uOD0Ul1rumFtp7PpvjVqpWhsNLaqaJg+kTRv9+q2JAREQEREHJPFnp7DqFo3daeKAPu1rjdcLc8AcXHG0l0YPo9u7dvXhPZVhK5dwDmlrgCCNiD3VQefW+K053kFqgaGxUVzqadgHQNZK5o2+wQYRERAREQEREBERBm8AuEVpzvH7rO5rYqO501RI53QNZK1xJ+wVvjSHNDmkEEbgjuqaFaB4UNQoNQtG7TVyVHm3W2RtoLk12wd5sbQA8gdnt4Xb+pI7IOsIiICIiAtd1PuVPZ9N8lulU4NhpLTUyvJ9BE47ffotiUavH9qFDjumMeF0k3/c8ieBI0HnHSscC9x5fqcGtHTccXogr8RFlMex3IMjqXUuPWK6Xedo3dFQ0kk7wPcMBKDFosxkeLZNjT2MyLHLxZnSfIK+ikpy76cYG6w6C3DSO8QX/S3FrzT/ACVdpppNv8rvLbxN+x3H2W0KKX4e2pMV0xCr04uNQBX2lzqm3hzuctM927mjc8yx5J+jx6FStQEREBERB8TSxwwvmleGRxtLnuPQAcyVUDmlzZesxvd5j+SvuE9S3ltykkc4f1ViXjN1Ip8E0hrrdT1IZe8gifQ0TGv2e1jhtLKNuYDWnbf/ADOaq1kBERAREQEREBERAXSfD3qzdtI82beaOM1dtqg2G50XFt58QPIg9nt3JafqOhK5spbXnwlTXbRPGcixCVzcrda46m4UNRMPLrHSDzNmOPJkjQ4M234TwjodyQmBp7muNZ9jcGQYtdIq+jlGzuE7SQv25skb1a4eh+o3BBWxKpexX3UDSTMJxb6q6YzeqdwZUwPYWFwHMNkjcOF7ee43BHPcKReD+Nq800EdPmWH0twcBs6qt05gcfcxuDgT9HAeyCbqKKsnjbwgU4dHh+ROm7sc6EN/1cRP+y5xqD40cxutPNSYfj9DjzH7tbVTyfmpwOYBaC1rGnvza7b3QSz1q1YxXSrG33K/VbH10jHGht0bx59U4cvhHZoO27jyH12BrM1Qze96h5tX5XfpQ6qq3fDG0nggjHJsbAejQP5ncnmSsTkl9vOSXea73+6Vdzr5zvJPUyl7z7bnoBvyA5Dsscg3TRDBZ9SNULNiMUroIqyUuqpmjnFAxpfI4e/C0ge5CtLwvFsfw3Hqew41a6e22+nbs2KJu3Ee7nHq5x7uO5Krr8E1+oLD4h7G64yCKKvjmoY5HHYNlkZ+7B/icA0e7grLUGOyWxWfJbLUWW/W2muNvqW8MtPOzia4f8EdiOY7Kr7xHac/2X6rXHGYHvlt7mtqrfI87udTv34QfUtIc0nvw791akq7PxAL7Q3nXz8rRSNkdaLTBQ1DmuBHm8cspHL0ErQR2IKDiWGZLecQyehyOwVjqS40MnmQyDmPQtI7tIJBHcEqyPw+684rqvbIqZs0VsyWOPeptcr+biBzfET87O/LmO/qaxF+tLUT0lTHU0s8sE8Tg+OSN5a5jh0II5goLk0VcOnviv1XxaGOkr62kyWjZyDbnGTKBt2lYQ4n3dxLorPHHdhGA/Tuic/bmRdHAb/Tyz/VBNlaHrHqviGltgfcchr4zVujc6kt0TwaiqcOzW9hvtu48hv9lDDOPGFqffKd9LY4bVjcTm7GSmiM0/v8cm7Ry5cmg+/pyPHce1B1by6Rltpbrkt3ndxVFTK8v4AT80krjwsb9SB2CD61j1Hv+qGa1OS36Th4vgpKVjt46WEH4Y2+vu7qTufZaYp3Yf4TLFj+kuRxX+SC75dcLXKyGoDSYKGQN4meSCASeNrd3nYkcgGgneCKAiIgIiICIiAiIgK1/QbLrbm2kuO3y3TRvJoYoamNjtzBOxgbJGe/JwO2/UEHoVVAtiwnOcvwmqkqcUyK4WiSUbSCnlIbJ/E35T9wgs110tOllRh1TddU7daprZSRnaepbtM3vwRPbtIHE9GsO5VX2Yz2Gpye4TYxQVNBZXTH8lBUTebK2MchxO2HM9du2+2523PrzTN8uzSrZU5Vkdyu8kf+GKmcuZH/AAt+Vv2AWvICIiAiIg+onvikbLE9zHsIc1zTsWkdCD6qV2lXjMvVlssNqzmwOv74GcDLjT1AineAOXmNIIe71cC33BO5UT0QS81L8adwr7RNQYJjLrVUytLf2hXStkfED3ZG0cPF7kkD0KiTW1VTW1k9bWVEtRU1EjpZppXlz5HuO7nOJ5kkkkkr8UQEREBERBnMDutpsmXW66X2wwX62QTB1TQTPc1szOhG7SOY6jfluBuCFaXo7f8ABciwejr9PW26GzkAflaOJkX5d+w3Y+Nu3A8ctwfY8xsVUws5h2XZPh1yNxxa/XC0VLgA99LMWCQDoHDo4c+hBCC1zUXLLVhGF3TJ7zVRU9LQwOeOM/4j9vgjA7uc7YAe6qHWz5zqBmucPhdlmTXK7tg/wo55iY2H1DBs0Hn123WsICIiAiIgIiICIiAiIgIiICIiAvTbKCtulwgt9tpJ6ysqHiOGCCMvfI49AGjmSvMrEPB1oZR4DjNNl2Q0TH5ZcYeMB/P8hC4biNvo8jbiPvw9Adw5do34NKuup6e66mXSW3seA8Wmgc0zDvtJKQWt9w0Hr8wKkVj3h+0csdMyCmwG0VPD1fXRmqe4777kyl3/AM+y6eiDnl20P0hucT4qnTrHI2vGxNNRNpz07GLhI+y4fqr4McfraWat06u89qrWgltBXvM1PIefwiT52fU8f/KlmiCoLOMTyDCsjqMeya2TW+4U5+KOQcnNPR7T0c07ciOSwitQ8QOktk1Zwua1VrI6a6wNL7bcAwF8EnYE9TG7o5v3HMAqr/JLNccdv9fYrvTOpq+gnfT1ETh8r2nY/Ueh7jYoMeiIgIiICIiAiIgIiICIiAiIgIiICIiDadNtPsu1FvZtGI2aa4TsAdM8ENigaTtxSPOzWjr7nY7ArrWpXhevOnelVxzbJ8stoqKQRBlvo6d0vmvkkawN8xxbtsHEkhp+U/VS08HFgtFk8P2NzWuCJstygNZWTNA4pZnOIPEe/CAGj0DVqv4hU0sWgcTI2ktmvVMyQ8+TeCV39WhBE7wh4bBm2u9joqyMSUNvLrlUsI3Dmw7FoPsZCwH2JVnigt+GzTwO1ByqrdwfmI7VHGzcDi4XSgu277bsb/sp0oCIiAiIgKCX4i2FQ2vOLNm1HAGMvUDqesLQADPDtwuPuWOA/wDGp2qMH4j8ELtHbDUu286PII2N6fK6nnLvfq1qCM2g+hNz1gxy9V9iyGgorhapmRupKuJwZIHtJa7zG7kblrhtwnotR1S0xzXTS6Mocts0lI2XfyKlh8ynn268Eg5EjuORHcKRv4aNTK2+ZvSAjypKajkcNufE10oH/u5SQ8T1jtV90FzCK7QxPbSWqetp3vA3jnhjL4y09iXNA5dQSO6CrBERAREQEREBERAREQEREBERAREQSA8M3iRuOldD/wBNXq2yXfGnSukY2F4bUUhdzd5e/wALgTz4SRzJO/Zdf8TesOluqWgF2ocfyeL9rQT09TBQ1UT4JXubI0OA4gA48DnnkT026qECIJB+ATJIrHrxHbaibgivdvmo2gn4TKC2Vn3/AHbgP4vdWKqnSw3Wusd8ob1bJjBW0FRHU08g/TIxwc0/zAVqeiOo9o1QwCiyW2SRtnc0R19K127qWoA+JhHXbuD3BBQbwiIgIiIChz+JRkkQo8TxCMtdM6SW5TjfmxoHlx8vcmX/AE/yltkl6tmOWGtvt6rI6O30UJmqJpDsGtH9T2A7kgKq3XDP6zUzUq6ZZUtfFFUPEdHA8jeCnZyYzly325n3JQdr8EupGBaXY7lt2zC/MpKi41FNDTUkcD5ZniJsjiQGA7AmXbd2w3b1WP8AE14navUa1TYlilDPasdlcPzU07v7xWBrtw0hp2YzkCW7knluQNwY3IgIiICIiAiIgIiICIiAiIgIiICIiAiIgLfNFtVMo0pycXjHpw+CbhbW0MpPk1TAejh2cOezhzG/cEg6GiC0PRzXvT7UukijoLpHbLwR+8tddII5geXyE8pBz6t5+oC6qqZ1u2N6tam47EIbPneQU0A24YTWvkjb9GOJaPsEFsS0vU3VPBdOaB1Tld/pqSXh3jo2O8ypl9mxD4j1HM7Ab8yFW7etbdW7xTGmrtQb+YncnNhqjDxD0Pl7bhaDUzzVNQ+oqZpJppHFz5JHFznE9SSeZKDsniQ1/v8Aq3Vtt1PFJaMYp5OOGgD93TOHSSYjk4+jejfc81xdEQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQf//Z" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;margin-right:6px;" />Gifting Studio</div>
+    <div class="login-sub">Enter your team password to continue</div>
+    <input class="login-input" type="password" id="pw-input" placeholder="••••••••" />
+    <div class="login-error" id="pw-error"></div>
+    <button class="btn-primary" style="width:100%;" onclick="handleLogin()">Enter →</button>
+  </div>
+</div>
+
+<div id="app-screen">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+    <div>
+      <div style="font-family:'Playfair Display',serif;font-size:28px;font-weight:600;margin-bottom:4px;"><img src="data:image/png;base64,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" style="width:32px;height:32px;object-fit:contain;vertical-align:middle;margin-right:8px;" />Gifting Studio</div>
+      <div style="font-size:13px;color:#606070;">Orders save automatically · shared with your whole team</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <span class="saving-indicator" id="saving-indicator">saving…</span>
+      <button class="btn-ghost" onclick="handleLogout()">Log out</button>
+      <button id="export-btn" class="btn-primary" style="display:none" onclick="handleCopyCSV()">⎘ Copy Orders as CSV</button>
+    </div>
+  </div>
+
+  <!-- View tabs: Active / Archived -->
+  <div style="display:flex;gap:6px;margin-bottom:20px;align-items:center;">
+    <button class="view-tab view-tab-active" id="vtab-active" onclick="switchView('active')">📦 Active Orders <span id="active-count" style="background:#2a2a35;border-radius:20px;padding:1px 8px;font-size:11px;margin-left:4px;">0</span></button>
+    <button class="view-tab view-tab-inactive" id="vtab-archived" onclick="switchView('archived')">✓ Archived <span id="archived-count" style="background:#2a2a35;border-radius:20px;padding:1px 8px;font-size:11px;margin-left:4px;">0</span></button>
+  </div>
+
+  <!-- Input Card (only shown in active view) -->
+  <div id="input-card" class="card" style="padding:24px;margin-bottom:24px;">
+    <div style="display:flex;gap:8px;margin-bottom:20px;">
+      <button class="tab tab-active" id="tab-text" onclick="switchTab('text')">✏️ Paste Text</button>
+      <button class="tab tab-inactive" id="tab-image" onclick="switchTab('image')">🖼 Upload Screenshot</button>
+    </div>
+    <div id="panel-text">
+      <div class="lbl" style="margin-bottom:10px;">Paste raw address / order info</div>
+      <textarea class="input-field" id="text-input" placeholder="cosima chalk, schulenburgring 125, 12101 Berlin Germany&#10;cosima.chalk@gmail.com +4917663639405&#10;Size S puffer&#10;Size M black jogger"></textarea>
+      <div id="text-error" style="color:#e07070;font-size:13px;margin-top:8px;display:none;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px;">
+        <span style="font-size:12px;color:#40404a;">⌘ + Enter to parse</span>
+        <button class="btn-primary" id="parse-text-btn" onclick="handleParseText()">Parse Address →</button>
+      </div>
+    </div>
+    <div id="panel-image" style="display:none;">
+      <div id="drop-zone" class="drop-zone" onclick="document.getElementById('file-input').click()"
+        ondragover="event.preventDefault();this.classList.add('dragover')"
+        ondragleave="this.classList.remove('dragover')"
+        ondrop="handleDrop(event)">
+        <div style="font-size:36px;margin-bottom:12px;">📸</div>
+        <div style="font-size:15px;color:#c8a96e;font-weight:500;margin-bottom:6px;">Drop screenshot here</div>
+        <div style="font-size:12px;color:#505060;">or click to browse · PNG, JPG, WEBP supported</div>
+        <div style="font-size:11px;color:#383840;margin-top:8px;">Instagram DMs, notes, WhatsApp — anything with address info</div>
+      </div>
+      <div id="image-preview" style="display:none;">
+        <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+          <img id="preview-img" src="" alt="Preview" style="width:120px;height:120px;object-fit:cover;border-radius:10px;border:1px solid #2a2a35;flex-shrink:0;" />
+          <div style="flex:1;">
+            <div style="font-size:14px;color:#c8a96e;margin-bottom:6px;font-weight:500;">Screenshot ready</div>
+            <div style="font-size:12px;color:#606070;margin-bottom:16px;">Claude will read all address and order info from this image automatically.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn-primary" id="parse-image-btn" onclick="handleParseImage()">Extract from Image →</button>
+              <button class="btn-ghost" onclick="clearImage()">Remove</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <input type="file" id="file-input" accept="image/*" style="display:none;" onchange="handleFileSelect(this.files[0])" />
+      <div id="image-error" style="color:#e07070;font-size:13px;margin-top:12px;display:none;"></div>
+    </div>
+  </div>
+
+  <!-- Export hint -->
+  <div id="export-hint" class="card" style="padding:14px;margin-bottom:20px;display:none;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div style="font-size:12px;color:#606070;flex:1;">💡 <strong style="color:#c8a96e;">Export to Excel:</strong> Click "Copy as CSV" → Open Excel → New sheet → Click A1 → ⌘V</div>
+    <button class="btn-ghost" style="font-size:11px;" onclick="showCSVModal()">View raw CSV</button>
+  </div>
+
+  <div id="empty-state" style="text-align:center;padding:60px 20px;color:#30303a;">
+    <div style="font-size:40px;margin-bottom:12px;">📦</div>
+    <div style="font-size:14px;" id="empty-text">No active orders yet — paste text or upload a screenshot above</div>
+  </div>
+
+  <div id="orders-list" style="display:flex;flex-direction:column;gap:14px;"></div>
+</div>
+
+<div id="csv-modal" class="modal-bg" style="display:none;" onclick="hideCSVModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-family:'Playfair Display',serif;font-size:18px;">Raw CSV Data</div>
+      <button class="btn-ghost" onclick="hideCSVModal()">✕ Close</button>
+    </div>
+    <div style="font-size:12px;color:#606070;margin-bottom:8px;">Select all (⌘A) and copy (⌘C), then paste into Excel cell A1</div>
+    <div class="csv-box" id="csv-content"></div>
+    <button class="btn-primary" style="width:100%;" onclick="copyCSVFromModal()">⎘ Copy all to clipboard</button>
+  </div>
+</div>
+
+<script>
+  let sessionPassword = "";
+  let orders = [];
+  let archived = [];
+  let pendingImage = null;
+  let activeTab = "text";
+  let editingId = null;
+  let currentView = "active";
+
+  const SYSTEM_PROMPT = `You are an address parsing assistant for an Instagram gifting tool.
+Parse text OR images into structured customer/order data.
+Return ONLY valid JSON. No markdown, no explanation, no code fences.
+Extract: first_name, last_name, full_name, address_line1, city, postcode, country, country_code (2-letter ISO), email, phone, items (array of strings), notes.
+If a field is not found, use "".
+Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city":"","postcode":"","country":"","country_code":"","email":"","phone":"","items":[],"notes":""}`;
+
+  // ── Auth ──────────────────────────────────────────────
+  async function handleLogin() {
+    const pw = document.getElementById("pw-input").value.trim();
+    if (!pw) return;
+    const btn = document.querySelector('#login-screen .btn-primary');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="pulse">Signing in…</span>';
+    try {
+      const res = await fetch(`/api/orders?password=${encodeURIComponent(pw)}`);
+      if (res.status === 401) {
+        document.getElementById("pw-error").textContent = "Wrong password, try again.";
+        btn.disabled = false; btn.textContent = "Enter →";
+        return;
+      }
+      const data = await res.json();
+      sessionPassword = pw;
+      orders = data.orders || [];
+      archived = data.archived || [];
+      document.getElementById("login-screen").style.display = "none";
+      document.getElementById("app-screen").style.display = "block";
+      renderOrders();
+    } catch(e) {
+      document.getElementById("pw-error").textContent = "Connection error, try again.";
+      btn.disabled = false; btn.textContent = "Enter →";
+    }
+  }
+
+  document.getElementById("pw-input").addEventListener("keydown", e => { if (e.key === "Enter") handleLogin(); });
+
+  function handleLogout() {
+    sessionPassword = ""; orders = []; archived = [];
+    document.getElementById("app-screen").style.display = "none";
+    document.getElementById("login-screen").style.display = "flex";
+    document.getElementById("pw-input").value = "";
+  }
+
+  // ── Tabs ──────────────────────────────────────────────
+  function switchTab(tab) {
+    activeTab = tab;
+    document.getElementById("panel-text").style.display = tab === "text" ? "block" : "none";
+    document.getElementById("panel-image").style.display = tab === "image" ? "block" : "none";
+    document.getElementById("tab-text").className = "tab " + (tab === "text" ? "tab-active" : "tab-inactive");
+    document.getElementById("tab-image").className = "tab " + (tab === "image" ? "tab-active" : "tab-inactive");
+  }
+
+  function switchView(view) {
+    currentView = view;
+    document.getElementById("vtab-active").className = "view-tab " + (view === "active" ? "view-tab-active" : "view-tab-inactive");
+    document.getElementById("vtab-archived").className = "view-tab " + (view === "archived" ? "view-tab-active" : "view-tab-inactive");
+    document.getElementById("input-card").style.display = view === "active" ? "block" : "none";
+    renderOrders();
+  }
+
+  // ── Parse text ────────────────────────────────────────
+  async function handleParseText() {
+    const text = document.getElementById("text-input").value.trim();
+    if (!text) return;
+    setLoading("parse-text-btn", "Parsing…");
+    hideError("text-error");
+    try {
+      const parsed = await callAPI([{ role: "user", content: text }]);
+      await addOrder({ ...parsed, source: "text" });
+      document.getElementById("text-input").value = "";
+    } catch (e) { showError("text-error", e.message || "Could not parse. Please try again."); }
+    setLoading("parse-text-btn", null, "Parse Address →");
+  }
+
+  document.getElementById("text-input").addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.metaKey) handleParseText();
+  });
+
+  // ── Parse image ───────────────────────────────────────
+  async function handleFileSelect(file) {
+    if (!file || !file.type.startsWith("image/")) { showError("image-error", "Please upload an image file."); return; }
+    const base64 = await fileToBase64(file);
+    pendingImage = { base64, mediaType: file.type, previewUrl: URL.createObjectURL(file) };
+    document.getElementById("preview-img").src = pendingImage.previewUrl;
+    document.getElementById("drop-zone").style.display = "none";
+    document.getElementById("image-preview").style.display = "block";
+    hideError("image-error");
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById("drop-zone").classList.remove("dragover");
+    handleFileSelect(e.dataTransfer.files[0]);
+  }
+
+  function clearImage() {
+    pendingImage = null;
+    document.getElementById("drop-zone").style.display = "block";
+    document.getElementById("image-preview").style.display = "none";
+    document.getElementById("file-input").value = "";
+    hideError("image-error");
+  }
+
+  async function handleParseImage() {
+    if (!pendingImage) return;
+    setLoading("parse-image-btn", "Reading image…");
+    hideError("image-error");
+    try {
+      const content = [
+        { type: "image", source: { type: "base64", media_type: pendingImage.mediaType, data: pendingImage.base64 } },
+        { type: "text", text: "Extract all address and order information from this screenshot and return as JSON." }
+      ];
+      const parsed = await callAPI([{ role: "user", content }]);
+      await addOrder({ ...parsed, source: "image" });
+      clearImage();
+    } catch (e) { showError("image-error", e.message || "Could not read image. Try a clearer screenshot."); }
+    setLoading("parse-image-btn", null, "Extract from Image →");
+  }
+
+  // ── API ───────────────────────────────────────────────
+  async function callAPI(messages) {
+    const res = await fetch("/api/parse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        password: sessionPassword,
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages,
+      }),
+    });
+    const data = await res.json();
+    if (res.status === 401) throw new Error("Wrong password.");
+    if (!res.ok) throw new Error(data.error || "API error");
+    const text = (data.content || []).map(b => b.text || "").join("");
+    return JSON.parse(text.replace(/```json|```/g, "").trim());
+  }
+
+  async function apiOrders(body) {
+    showSaving(true);
+    const res = await fetch("/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: sessionPassword, ...body }),
+    });
+    showSaving(false);
+    return res.json();
+  }
+
+  // ── Orders CRUD ───────────────────────────────────────
+  async function addOrder(data) {
+    const order = { ...data, id: Date.now(), status: "Pending", createdAt: new Date().toISOString() };
+    orders.push(order);
+    renderOrders();
+    await apiOrders({ action: "add", order });
+  }
+
+  async function archiveOrder(id) {
+    const order = orders.find(o => o.id === id);
+    if (!order) return;
+    order.status = "Sent";
+    order.archivedAt = new Date().toISOString();
+    archived.unshift(order);
+    orders = orders.filter(o => o.id !== id);
+    renderOrders();
+    await apiOrders({ action: "archive", id });
+  }
+
+  async function deleteOrder(id) {
+    orders = orders.filter(o => o.id !== id);
+    renderOrders();
+    await apiOrders({ action: "delete", id });
+  }
+
+  function startEdit(id) { editingId = id; renderOrders(); }
+  function cancelEdit() { editingId = null; renderOrders(); }
+
+  async function saveEdit(id) {
+    const order = orders.find(o => o.id === id);
+    ["first_name","last_name","full_name","email","phone","address_line1","city","postcode","country","country_code"].forEach(f => {
+      const el = document.getElementById(`edit-${id}-${f}`);
+      if (el) order[f] = el.value;
+    });
+    const itemsEl = document.getElementById(`edit-${id}-items_str`);
+    if (itemsEl) order.items = itemsEl.value.split(",").map(s => s.trim()).filter(Boolean);
+    if (!order.full_name) order.full_name = `${order.first_name||""} ${order.last_name||""}`.trim();
+    editingId = null;
+    renderOrders();
+    await apiOrders({ action: "update", order });
+  }
+
+  // ── Render ────────────────────────────────────────────
+  function renderOrders() {
+    const list = document.getElementById("orders-list");
+    const empty = document.getElementById("empty-state");
+    const emptyText = document.getElementById("empty-text");
+    const exportBtn = document.getElementById("export-btn");
+    const exportHint = document.getElementById("export-hint");
+    const activeCount = document.getElementById("active-count");
+    const archivedCount = document.getElementById("archived-count");
+
+    activeCount.textContent = orders.length;
+    archivedCount.textContent = archived.length;
+
+    const items = currentView === "active" ? orders : archived;
+    empty.style.display = items.length === 0 ? "block" : "none";
+    emptyText.textContent = currentView === "active"
+      ? "No active orders — paste text or upload a screenshot above"
+      : "No archived orders yet — mark orders as Sent to archive them";
+
+    exportBtn.style.display = items.length > 0 ? "inline-flex" : "none";
+    exportHint.style.display = items.length > 0 ? "flex" : "none";
+    exportBtn.textContent = `⎘ Copy ${items.length} Order${items.length !== 1 ? "s" : ""} as CSV`;
+
+    list.innerHTML = items.map(o => {
+      if (currentView === "active" && editingId === o.id) return renderEditCard(o);
+      return renderViewCard(o, currentView === "archived");
+    }).join("");
+  }
+
+  function renderViewCard(o, isArchived) {
+    const badge = o.source === "image"
+      ? `<span class="source-badge badge-img">📸 image</span>`
+      : `<span class="source-badge badge-txt">✏️ text</span>`;
+    const archivedBadge = isArchived ? `<span class="source-badge archived-badge">✓ Sent</span>` : "";
+    const thumb = o.thumbUrl ? `<img src="${o.thumbUrl}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a2a35;flex-shrink:0;" />` : "";
+    const items = (o.items||[]).map(i => `<span class="tag">${i}</span>`).join("");
+    const notes = o.notes ? `<div style="margin-top:10px;font-size:12px;color:#706060;font-style:italic;">⚠ ${o.notes}</div>` : "";
+    const archivedDate = isArchived && o.archivedAt ? `<div style="font-size:11px;color:#404050;margin-top:8px;">Archived ${new Date(o.archivedAt).toLocaleDateString()}</div>` : "";
+
+    const actions = isArchived
+      ? `<span style="font-size:12px;color:#6060a0;">Archived</span>`
+      : `<button class="btn-archive" onclick="archiveOrder(${o.id})">✓ Mark as Sent</button>
+         <button class="btn-ghost" onclick="startEdit(${o.id})">Edit</button>
+         <button class="btn-danger" onclick="deleteOrder(${o.id})">✕</button>`;
+
+    return `<div class="card fade-in ${isArchived ? 'archived-card' : ''}" style="padding:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          ${thumb}
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap;">
+              <span style="font-family:'Playfair Display',serif;font-size:17px;color:#f0ede8;">${o.full_name||"—"}</span>
+              ${badge}${archivedBadge}
+            </div>
+            <div style="font-size:12px;color:#505060;">${o.email||""}${o.phone?" · "+o.phone:""}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">${actions}</div>
+      </div>
+      <div class="order-details">
+        <div><div class="lbl">Address</div><div class="val">${o.address_line1||"—"}</div></div>
+        <div><div class="lbl">City</div><div class="val">${o.city||"—"}</div></div>
+        <div><div class="lbl">Postcode</div><div class="val">${o.postcode||"—"}</div></div>
+        <div><div class="lbl">Country</div><div class="val">${o.country||"—"}${o.country_code?` <span style="color:#c8a96e;font-size:12px;">(${o.country_code})</span>`:""}</div></div>
+      </div>
+      ${items ? `<div><div class="lbl" style="margin-bottom:6px;">Items</div><div>${items}</div></div>` : ""}
+      ${notes}${archivedDate}
+    </div>`;
+  }
+
+  function renderEditCard(o) {
+    const fields = [["first_name","First Name"],["last_name","Last Name"],["email","Email"],["phone","Phone"],["address_line1","Address"],["city","City"],["postcode","Postcode"],["country","Country"],["country_code","Country Code"]];
+    return `<div class="card" style="padding:20px;">
+      <div class="edit-grid">
+        ${fields.map(([f,l]) => `<div><div class="lbl">${l}</div><input class="input-field" id="edit-${o.id}-${f}" value="${(o[f]||"").replace(/"/g,'&quot;')}" /></div>`).join("")}
+        <div class="full"><div class="lbl">Items (comma separated)</div><input class="input-field" id="edit-${o.id}-items_str" value="${(o.items||[]).join(", ").replace(/"/g,'&quot;')}" /></div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-primary" onclick="saveEdit(${o.id})">Save</button>
+        <button class="btn-ghost" onclick="cancelEdit()">Cancel</button>
+      </div>
+    </div>`;
+  }
+
+  // ── CSV ───────────────────────────────────────────────
+  function buildCSV() {
+    const items = currentView === "active" ? orders : archived;
+    const headers = ["#","Full Name","First Name","Last Name","Address","City","Postcode","Country","Country Code","Email","Phone","Items","Notes","Status"];
+    const rows = items.map((o,i) => [i+1,o.full_name,o.first_name,o.last_name,o.address_line1,o.city,o.postcode,o.country,o.country_code,o.email,o.phone,(o.items||[]).join(", "),o.notes,o.status||"Pending"]);
+    return [headers,...rows].map(r => r.map(c => `"${String(c||"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  }
+
+  async function handleCopyCSV() {
+    const csv = buildCSV();
+    try {
+      await navigator.clipboard.writeText(csv);
+      const btn = document.getElementById("export-btn");
+      const orig = btn.textContent;
+      btn.textContent = "✓ Copied! Paste into Excel";
+      btn.className = "btn-success";
+      setTimeout(() => { btn.textContent = orig; btn.className = "btn-primary"; }, 2500);
+    } catch { showCSVModal(); }
+  }
+
+  function showCSVModal() { document.getElementById("csv-content").textContent = buildCSV(); document.getElementById("csv-modal").style.display = "flex"; }
+  function hideCSVModal() { document.getElementById("csv-modal").style.display = "none"; }
+  async function copyCSVFromModal() { await navigator.clipboard.writeText(buildCSV()); hideCSVModal(); }
+
+  // ── Helpers ───────────────────────────────────────────
+  function fileToBase64(file) {
+    return new Promise((res,rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); });
+  }
+  function setLoading(id, msg, reset) {
+    const btn = document.getElementById(id); if (!btn) return;
+    if (msg) { btn.disabled = true; btn.innerHTML = `<span class="pulse">${msg}</span>`; }
+    else { btn.disabled = false; btn.textContent = reset; }
+  }
+  function showError(id, msg) { const el = document.getElementById(id); if (el) { el.textContent = msg; el.style.display = "block"; } }
+  function hideError(id) { const el = document.getElementById(id); if (el) el.style.display = "none"; }
+  function showSaving(on) { document.getElementById("saving-indicator").className = "saving-indicator" + (on ? " show" : ""); }
+</script>
+</body>
+</html>
