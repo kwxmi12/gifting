@@ -462,12 +462,12 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Shopify error");
-      // Navigate directly to avoid popup blocker
-      window.location.href = data.adminUrl;
+      if (!data.adminUrl) throw new Error("No order URL returned: " + JSON.stringify(data));
+      window.open(data.adminUrl, "_blank");
     } catch (e) {
-      alert("Failed to create Shopify order: " + e.message);
-      if (btn) { btn.disabled = false; btn.innerHTML = '🛍 Shopify'; }
+      alert("Shopify error: " + e.message);
     }
+    if (btn) { btn.disabled = false; btn.innerHTML = '🛍 Shopify'; }
   }
 
   // ── Render ────────────────────────────────────────────
