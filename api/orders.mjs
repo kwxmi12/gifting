@@ -7,7 +7,6 @@ async function redisGet(key) {
   if (!data.result) return null;
   try {
     const parsed = JSON.parse(data.result);
-    // Handle double-stringified data
     if (typeof parsed === 'string') return JSON.parse(parsed);
     return parsed;
   } catch { return null; }
@@ -73,6 +72,27 @@ export default async function handler(req, res) {
           await redisSet("orders:active", safeActive.filter(o => o.id !== id));
           await redisSet("orders:archived", safeArchived);
         }
+        return res.status(200).json({ ok: true });
+      }
+      if (action === "unarchive") {
+        const active = (await redisGet("orders:active")) || [];
+        const archived = (await redisGet("orders:archived")) || [];
+        const safeActive = Array.isArray(active) ? active : [];
+        const safeArchived = Array.isArray(archived) ? archived : [];
+        const toRestore = safeArchived.find(o => o.id === id);
+        if (toRestore) {
+          toRestore.status = "Pending";
+          delete toRestore.archivedAt;
+          safeActive.push(toRestore);
+          await redisSet("orders:active", safeActive);
+          await redisSet("orders:archived", safeArchived.filter(o => o.id !== id));
+        }
+        return res.status(200).json({ ok: true });
+      }
+      if (action === "deleteArchived") {
+        const archived = (await redisGet("orders:archived")) || [];
+        const safe = Array.isArray(archived) ? archived : [];
+        await redisSet("orders:archived", safe.filter(o => o.id !== id));
         return res.status(200).json({ ok: true });
       }
     }
