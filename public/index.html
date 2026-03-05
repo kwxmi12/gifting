@@ -189,8 +189,17 @@
   const SYSTEM_PROMPT = `You are an address parsing assistant for an Instagram gifting tool.
 Parse text OR images into structured customer/order data.
 Return ONLY valid JSON. No markdown, no explanation, no code fences.
+
 Extract: first_name, last_name, full_name, address_line1, city, postcode, country, country_code (2-letter ISO), email, phone, items (array of strings), notes.
 If a field is not found, use "".
+
+CRITICAL RULES FOR ITEMS:
+- Each item must include its size if mentioned. Format: "Product Name - Size X"
+- Examples: "Black Silk Hoodie - Size M", "Raw Denim Jeans - Size 32", "Puffer Jacket - Size L"
+- If a size applies to multiple items, apply it to each one individually
+- Never put size information in notes — always attach it to the item name
+- If no size is mentioned for an item, just use the product name
+
 Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city":"","postcode":"","country":"","country_code":"","email":"","phone":"","items":[],"notes":""}`;
 
   // ── Auth ──────────────────────────────────────────────
