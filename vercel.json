@@ -2,6 +2,7 @@
   "rewrites": [
     { "source": "/api/orders", "destination": "/api/orders.mjs" },
     { "source": "/api/parse", "destination": "/api/parse.mjs" },
+    { "source": "/api/shopify", "destination": "/api/shopify.mjs" },
     { "source": "/(.*)", "destination": "/public/index.html" }
   ]
 }
