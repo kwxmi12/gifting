@@ -822,7 +822,20 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
         rows += `<tr style="${isFirst && isMulti ? 'border-top:1px solid #c8a96e33;' : ''}">
           <td>${nameCell}</td>
           <td title="${o.email||''}" style="font-size:11px;color:#707080;">${o.email||'—'}</td>
-          <td title="${(o.items||[]).join(', ')}" style="color:#b0b0c8;">${(o.items||[]).join(', ')||'—'}</td>
+          <td style="padding:0;">
+            ${(o.items||[]).length === 0 ? '<span style="color:#505060;padding:0 8px;">—</span>' :
+              (o.items||[]).length === 1
+              ? `<span style="color:#b0b0c8;font-size:12px;padding:0 8px;">${(o.items||[])[0]}</span>`
+              : `<details style="cursor:pointer;">
+                  <summary style="color:#b0b0c8;font-size:12px;padding:4px 8px;list-style:none;outline:none;white-space:nowrap;">
+                    ${(o.items||[])[0].length > 18 ? (o.items||[])[0].slice(0,18)+'…' : (o.items||[])[0]} <span style="color:#c8a96e;font-size:11px;">+${(o.items||[]).length - 1} more ▾</span>
+                  </summary>
+                  <div style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:6px;padding:6px 8px;position:absolute;z-index:100;min-width:160px;max-width:240px;">
+                    ${(o.items||[]).map(item => `<div style="color:#d0cde8;font-size:12px;padding:3px 0;border-bottom:1px solid #2a2a3a22;">${item}</div>`).join('')}
+                  </div>
+                </details>`
+            }
+          </td>
           <td><input class="cell-input" placeholder="—" value="${orderNum}" onchange="setMeta(${o.id},'orderNum',this.value)" style="width:75px;" /></td>
           <td style="color:#707080;">${dateSent}</td>
           <td>${trackHtml}<br><input class="cell-input" placeholder="paste URL" value="${tracking}" onchange="setMeta(${o.id},'tracking',this.value);renderCreatorsTable()" style="width:90px;font-size:10px;color:#505060;" /></td>
