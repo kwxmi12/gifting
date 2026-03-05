@@ -28,6 +28,8 @@
     .btn-danger { background: transparent; border: 1px solid #4a2020; border-radius: 8px; padding: 6px 12px; color: #e07070; cursor: pointer; font-size: 12px; transition: all 0.2s; font-family: inherit; }
     .btn-danger:hover { background: #4a2020; }
     .btn-success { background: linear-gradient(135deg, #2d6a4f, #40916c); color: #fff; border: none; border-radius: 10px; padding: 12px 24px; font-weight: 600; font-size: 14px; cursor: pointer; font-family: inherit; }
+    .btn-shopify { background: linear-gradient(135deg, #2d7a3a, #45a85a); color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font-weight: 600; font-size: 12px; cursor: pointer; font-family: inherit; transition: opacity 0.2s; white-space: nowrap; }
+    .btn-shopify:hover { opacity: 0.85; }
     .btn-archive { background: linear-gradient(135deg, #4a3a8a, #6a5aaa); color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font-weight: 600; font-size: 12px; cursor: pointer; font-family: inherit; transition: opacity 0.2s; white-space: nowrap; }
     .btn-archive:hover { opacity: 0.85; }
     .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #606070; font-weight: 500; margin-bottom: 4px; }
@@ -393,6 +395,29 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
     await apiOrders({ action: "update", order });
   }
 
+  // ── Shopify ───────────────────────────────────────
+  async function createShopifyOrder(id) {
+    const order = orders.find(o => o.id === id);
+    if (!order) return;
+    const btn = document.querySelector(`button[onclick="createShopifyOrder(${id})"]`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="pulse">Creating…</span>'; }
+    try {
+      const res = await fetch("/api/shopify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: sessionPassword, order }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Shopify error");
+      if (confirm(`✅ Draft order created! Open in Shopify admin?`)) {
+        window.open(data.adminUrl, "_blank");
+      }
+    } catch (e) {
+      alert("Failed to create Shopify order: " + e.message);
+    }
+    if (btn) { btn.disabled = false; btn.innerHTML = '🛍 Shopify'; }
+  }
+
   // ── Render ────────────────────────────────────────────
   function renderOrders() {
     const list = document.getElementById("orders-list");
@@ -435,7 +460,8 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
     const actions = isArchived
       ? `<button class="btn-ghost" onclick="unarchiveOrder(${o.id})">↩ Restore</button>
          <button class="btn-danger" onclick="deleteArchivedOrder(${o.id})">✕</button>`
-      : `<button class="btn-archive" onclick="archiveOrder(${o.id})">✓ Mark as Sent</button>
+      : `<button class="btn-shopify" onclick="createShopifyOrder(${o.id})">🛍 Shopify</button>
+         <button class="btn-archive" onclick="archiveOrder(${o.id})">✓ Mark as Sent</button>
          <button class="btn-ghost" onclick="startEdit(${o.id})">Edit</button>
          <button class="btn-danger" onclick="deleteOrder(${o.id})">✕</button>`;
 
