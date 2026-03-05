@@ -43,6 +43,17 @@ async function findOrUpdateCustomer(order) {
           address: { ...newAddress, default: true },
         });
       }
+      // Update name if missing on existing customer
+      const needsName = (!customer.first_name && order.first_name) || (!customer.last_name && order.last_name);
+      if (needsName) {
+        await shopifyFetch(`/customers/${customer.id}.json`, "PUT", {
+          customer: {
+            id: customer.id,
+            first_name: order.first_name || customer.first_name || "",
+            last_name: order.last_name || customer.last_name || "",
+          },
+        });
+      }
       return customer.id;
     } else {
       const { data: newCustomer } = await shopifyFetch("/customers.json", "POST", {
