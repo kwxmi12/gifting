@@ -89,15 +89,42 @@ function stripSize(text) {
     .trim();
 }
 
+const SYNONYMS = {
+  "flare": ["bootcut", "wide", "flared"],
+  "bootcut": ["flare", "flared", "wide"],
+  "jogger": ["sweatpant", "trackpant", "joggers"],
+  "joggers": ["sweatpant", "trackpant", "jogger"],
+  "hoodie": ["hoody", "sweatshirt"],
+  "puffer": ["padded", "quilted", "gilet"],
+  "tee": ["tshirt", "t-shirt", "top"],
+  "jeans": ["denim", "jeans"],
+  "jacket": ["coat", "blazer", "jacket"],
+};
+
+function expandSynonyms(words) {
+  const expanded = new Set(words);
+  for (const w of words) {
+    const syns = SYNONYMS[w.toLowerCase()] || [];
+    for (const s of syns) expanded.add(s);
+  }
+  return [...expanded];
+}
+
 function fuzzyScore(query, title) {
   const qWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
   const tWords = title.toLowerCase().split(/\s+/);
+  const tWordsExpanded = expandSynonyms(tWords);
   if (qWords.length === 0) return 0;
   let score = 0;
   for (const qw of qWords) {
-    if (tWords.some(tw => tw.includes(qw) || qw.includes(tw))) score++;
+    const qwExpanded = expandSynonyms([qw]);
+    // Exact word match (including synonyms) scores high
+    if (tWords.some(tw => tw === qw)) score += 1.5;
+    else if (qwExpanded.some(eq => tWords.some(tw => tw === eq))) score += 1.0;
+    // Partial match as fallback
+    else if (tWordsExpanded.some(tw => tw.includes(qw) || qw.includes(tw))) score += 0.5;
   }
-  return score / qWords.length;
+  return score / (qWords.length * 1.5);
 }
 
 async function getAllProducts() {
@@ -124,8 +151,8 @@ async function resolveLineItem(itemText, allProducts) {
     }
   }
 
-  // Use product match if any meaningful overlap (lowered threshold to 0.25)
-  if (bestProduct && bestScore >= 0.25) {
+  // Require at least 50% of query words to match well
+  if (bestProduct && bestScore >= 0.5) {
     let variant = null;
     if (size) {
       variant = bestProduct.variants.find(v =>
