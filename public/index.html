@@ -67,20 +67,22 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     .fade-in { animation: fadeIn 0.3s ease; }
     .archived-card { opacity: 0.7; }
-    .gifts-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .gifts-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #606070; font-weight: 500; padding: 10px 12px; border-bottom: 1px solid #2a2a35; white-space: nowrap; }
-    .gifts-table td { padding: 12px; border-bottom: 1px solid #1a1a25; vertical-align: top; color: #e0ddd8; }
-    .gifts-table tr:hover td { background: #1a1a22; }
-    .gifts-table input.cell-input { background: transparent; border: none; color: #e0ddd8; font-family: inherit; font-size: 13px; width: 100%; outline: none; padding: 0; }
-    .gifts-table input.cell-input:focus { border-bottom: 1px solid #c8a96e; }
-    .gifts-table input.cell-input::placeholder { color: #404050; }
-    .social-link { color: #c8a96e; text-decoration: none; }
+    .creators-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 900px; }
+    .creators-table th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #606070; font-weight: 600; padding: 9px 10px; border-bottom: 2px solid #2a2a35; white-space: nowrap; background: #13131a; position: sticky; top: 0; }
+    .creators-table td { padding: 7px 10px; border-bottom: 1px solid #1e1e28; vertical-align: middle; color: #e0ddd8; white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+    .creators-table tr:hover td { background: #1a1a24; }
+    .creators-table tr.grouped-first td { border-top: 2px solid #c8a96e22; }
+    .creators-table td.editable { cursor: text; }
+    .creators-table td.editable:hover { background: #23232d; }
+    .cell-input { background: transparent; border: none; color: #e0ddd8; font-family: inherit; font-size: 12px; width: 100%; outline: none; padding: 0; }
+    .cell-input:focus { color: #c8a96e; }
+    .cell-input::placeholder { color: #35354a; }
+    .social-link { color: #c8a96e; text-decoration: none; font-size: 12px; }
     .social-link:hover { text-decoration: underline; }
-    .platform-select { background: #23232d; border: 1px solid #3a3a45; border-radius: 6px; color: #e0ddd8; font-family: inherit; font-size: 11px; padding: 2px 6px; cursor: pointer; outline: none; margin-right: 4px; }
-    .creator-card { background: #18181d; border: 1px solid #2a2a35; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-    .creator-stat { background: #23232d; border-radius: 8px; padding: 8px 12px; text-align: center; }
-    .tracking-badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #1a2a1a; color: #6ae06a; border: 1px solid #2a4a2a; }
-    .tracking-pending { background: #2a2a1a; color: #e0c060; border: 1px solid #4a4a2a; }
+    .platform-select { background: #1e1e28; border: 1px solid #3a3a45; border-radius: 4px; color: #a0a0b8; font-family: inherit; font-size: 11px; padding: 1px 4px; cursor: pointer; outline: none; }
+    .tracking-live { font-size: 11px; color: #6ae06a; }
+    .tracking-pending { font-size: 11px; color: #707080; font-style: italic; }
+    .count-badge { background: #2a2a3a; border-radius: 4px; padding: 1px 6px; font-size: 11px; color: #c8a96e; font-weight: 600; }
     .archived-card:hover { opacity: 1; }
     @media (max-width: 500px) {
       .login-card { padding: 32px 24px; }
@@ -121,8 +123,7 @@
   <div style="display:flex;gap:6px;margin-bottom:20px;align-items:center;">
     <button class="view-tab view-tab-active" id="vtab-active" onclick="switchView('active')">📦 Active Orders <span id="active-count" style="background:#2a2a35;border-radius:20px;padding:1px 8px;font-size:11px;margin-left:4px;">0</span></button>
     <button class="view-tab view-tab-inactive" id="vtab-archived" onclick="switchView('archived')">✓ Archived <span id="archived-count" style="background:#2a2a35;border-radius:20px;padding:1px 8px;font-size:11px;margin-left:4px;">0</span></button>
-    <button class="view-tab view-tab-inactive" id="vtab-completed" onclick="switchView('completed')">🎁 Completed Gifts</button>
-    <button class="view-tab view-tab-inactive" id="vtab-creators" onclick="switchView('creators')">👥 Creators</button>
+    <button class="view-tab view-tab-inactive" id="vtab-creators" onclick="switchView('creators')">✦ Creators</button>
   </div>
 
   <!-- Input Card (only shown in active view) -->
@@ -181,24 +182,32 @@
 
   <div id="orders-list" style="display:flex;flex-direction:column;gap:14px;"></div>
 
-<div id="completed-gifts-container" style="display:none;">
-  <div class="card" style="padding:0;overflow:hidden;">
-    <table class="gifts-table" id="gifts-table">
+<div id="creators-container" style="display:none;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div style="font-size:12px;color:#606070;">Click any cell to edit · Social usernames become clickable links</div>
+    <button class="btn-ghost" style="font-size:11px;" onclick="exportCreatorsCSV()">↓ Export CSV</button>
+  </div>
+  <div style="overflow-x:auto;border-radius:12px;border:1px solid #2a2a35;">
+    <table class="creators-table" id="creators-table">
       <thead>
         <tr>
-          <th>Customer</th>
-          <th>Products</th>
-          <th>Order #</th>
-          <th>Date Sent + Tracking</th>
-          <th>Social</th>
+          <th style="width:140px;">Customer</th>
+          <th style="width:80px;">Email</th>
+          <th style="width:200px;">Products Sent</th>
+          <th style="width:90px;">Order #</th>
+          <th style="width:90px;">Date Sent</th>
+          <th style="width:110px;">Tracking</th>
+          <th style="width:60px;">Platform</th>
+          <th style="width:130px;">Username</th>
+          <th style="width:60px;">Platform 2</th>
+          <th style="width:130px;">Username 2</th>
+          <th style="width:70px;">Items Sent</th>
         </tr>
       </thead>
-      <tbody id="gifts-tbody"></tbody>
+      <tbody id="creators-tbody"></tbody>
     </table>
   </div>
 </div>
-
-<div id="creators-container" style="display:none;"></div>
 </div>
 
 <div id="csv-modal" class="modal-bg" style="display:none;" onclick="hideCSVModal()">
@@ -294,10 +303,15 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
 
   function switchView(view) {
     currentView = view;
-    document.getElementById("vtab-active").className = "view-tab " + (view === "active" ? "view-tab-active" : "view-tab-inactive");
-    document.getElementById("vtab-archived").className = "view-tab " + (view === "archived" ? "view-tab-active" : "view-tab-inactive");
+    ["active","archived","creators"].forEach(v => {
+      const el = document.getElementById("vtab-" + v);
+      if (el) el.className = "view-tab " + (view === v ? "view-tab-active" : "view-tab-inactive");
+    });
     document.getElementById("input-card").style.display = view === "active" ? "block" : "none";
-    renderOrders();
+    document.getElementById("creators-container").style.display = view === "creators" ? "block" : "none";
+    document.getElementById("orders-list").style.display = view === "creators" ? "none" : "flex";
+    if (view === "creators") renderCreatorsTable();
+    else renderOrders();
   }
 
   // ── Parse text ────────────────────────────────────────
@@ -593,6 +607,130 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
   function showError(id, msg) { const el = document.getElementById(id); if (el) { el.textContent = msg; el.style.display = "block"; } }
   function hideError(id) { const el = document.getElementById(id); if (el) el.style.display = "none"; }
   function showSaving(on) { document.getElementById("saving-indicator").className = "saving-indicator" + (on ? " show" : ""); }
+
+  // ── Creators spreadsheet ──────────────────────────────
+  let creatorMeta = {}; // { orderId: { platform1, username1, platform2, username2 } }
+
+  function loadCreatorMeta() {
+    try { const d = localStorage.getItem('creatorMeta'); if (d) creatorMeta = JSON.parse(d); } catch(e) {}
+  }
+  function saveCreatorMeta() {
+    try { localStorage.setItem('creatorMeta', JSON.stringify(creatorMeta)); } catch(e) {}
+  }
+  function setMeta(id, key, val) {
+    if (!creatorMeta[id]) creatorMeta[id] = {};
+    creatorMeta[id][key] = val;
+    saveCreatorMeta();
+  }
+  function getMeta(id, key) {
+    return (creatorMeta[id] || {})[key] || '';
+  }
+
+  // Group archived orders by shared identity (name/email/ig/tt)
+  function groupCreators(orders) {
+    const groups = [];
+    const assigned = new Set();
+    for (let i = 0; i < orders.length; i++) {
+      if (assigned.has(i)) continue;
+      const a = orders[i];
+      const group = [a];
+      assigned.add(i);
+      for (let j = i + 1; j < orders.length; j++) {
+        if (assigned.has(j)) continue;
+        const b = orders[j];
+        const ig1 = getMeta(a.id,'username1'), ig2 = getMeta(b.id,'username1');
+        const tt1 = getMeta(a.id,'username2'), tt2 = getMeta(b.id,'username2');
+        const sameEmail = a.email && b.email && a.email.toLowerCase() === b.email.toLowerCase();
+        const sameName = a.full_name && b.full_name && a.full_name.toLowerCase() === b.full_name.toLowerCase();
+        const sameIg = ig1 && ig2 && ig1.toLowerCase() === ig2.toLowerCase();
+        const sameTt = tt1 && tt2 && tt1.toLowerCase() === tt2.toLowerCase();
+        if (sameEmail || sameName || sameIg || sameTt) { group.push(b); assigned.add(j); }
+      }
+      groups.push(group);
+    }
+    return groups;
+  }
+
+  function platformIcon(p) { return p === 'tiktok' ? '🎵' : '📸'; }
+  function profileUrl(platform, username) {
+    if (!username) return '';
+    return platform === 'tiktok' ? `https://tiktok.com/@${username}` : `https://instagram.com/${username}`;
+  }
+
+  function renderCreatorsTable() {
+    loadCreatorMeta();
+    const tbody = document.getElementById('creators-tbody');
+    if (!tbody) return;
+    const groups = groupCreators(archived);
+    let html = '';
+    groups.forEach(group => {
+      const totalItems = group.reduce((s, o) => s + (o.items||[]).length, 0);
+      group.forEach((o, idx) => {
+        const isFirst = idx === 0;
+        const dateSent = o.archivedAt ? new Date(o.archivedAt).toLocaleDateString('en-GB') : '—';
+        const orderNum = getMeta(o.id,'orderNum') || '';
+        const tracking = getMeta(o.id,'tracking') || '';
+        const p1 = getMeta(o.id,'platform1') || 'instagram';
+        const u1 = getMeta(o.id,'username1') || '';
+        const p2 = getMeta(o.id,'platform2') || 'instagram';
+        const u2 = getMeta(o.id,'username2') || '';
+        const u1html = u1
+          ? `<a href="${profileUrl(p1,u1)}" target="_blank" class="social-link">${platformIcon(p1)} @${u1}</a>`
+          : `<input class="cell-input" placeholder="username" value="${u1}" onchange="setMeta(${o.id},'username1',this.value);renderCreatorsTable()" style="width:110px;" />`;
+        const u2html = u2
+          ? `<a href="${profileUrl(p2,u2)}" target="_blank" class="social-link">${platformIcon(p2)} @${u2}</a>`
+          : `<input class="cell-input" placeholder="username" value="${u2}" onchange="setMeta(${o.id},'username2',this.value);renderCreatorsTable()" style="width:110px;" />`;
+        const trackHtml = tracking
+          ? `<a href="${tracking}" target="_blank" class="tracking-live">📦 Track</a>`
+          : `<span class="tracking-pending">In progress</span>`;
+        html += `<tr class="${isFirst && group.length > 1 ? 'grouped-first' : ''}">
+          <td title="${o.full_name||''}">${o.full_name || '—'}${isFirst && group.length > 1 ? ` <span class="count-badge">×${group.length}</span>` : ''}</td>
+          <td title="${o.email||''}" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:#707080;">${o.email||'—'}</td>
+          <td title="${(o.items||[]).join(', ')}" style="color:#b0b0c8;">${(o.items||[]).join(', ')||'—'}</td>
+          <td><input class="cell-input" placeholder="—" value="${orderNum}" onchange="setMeta(${o.id},'orderNum',this.value)" style="width:75px;" /></td>
+          <td style="color:#707080;">${dateSent}</td>
+          <td>${trackHtml}<br><input class="cell-input" placeholder="tracking URL" value="${tracking}" onchange="setMeta(${o.id},'tracking',this.value);renderCreatorsTable()" style="width:95px;font-size:10px;color:#505060;" /></td>
+          <td><select class="platform-select" onchange="setMeta(${o.id},'platform1',this.value)">
+            <option value="instagram" ${p1==='instagram'?'selected':''}>📸 IG</option>
+            <option value="tiktok" ${p1==='tiktok'?'selected':''}>🎵 TT</option>
+          </select></td>
+          <td>${u1html}</td>
+          <td><select class="platform-select" onchange="setMeta(${o.id},'platform2',this.value)">
+            <option value="instagram" ${p2==='instagram'?'selected':''}>📸 IG</option>
+            <option value="tiktok" ${p2==='tiktok'?'selected':''}>🎵 TT</option>
+          </select></td>
+          <td>${u2html}</td>
+          <td style="text-align:center;"><span class="count-badge">${isFirst ? totalItems : (o.items||[]).length}</span></td>
+        </tr>`;
+      });
+    });
+    tbody.innerHTML = html || '<tr><td colspan="11" style="text-align:center;color:#404050;padding:24px;">No archived orders yet</td></tr>';
+  }
+
+  function exportCreatorsCSV() {
+    loadCreatorMeta();
+    const rows = [['Customer','Email','Products','Order #','Date Sent','Tracking','Platform 1','Username 1','Platform 2','Username 2','Items Sent']];
+    archived.forEach(o => {
+      rows.push([
+        o.full_name||'',
+        o.email||'',
+        (o.items||[]).join('; '),
+        getMeta(o.id,'orderNum')||'',
+        o.archivedAt ? new Date(o.archivedAt).toLocaleDateString('en-GB') : '',
+        getMeta(o.id,'tracking')||'',
+        getMeta(o.id,'platform1')||'instagram',
+        getMeta(o.id,'username1')||'',
+        getMeta(o.id,'platform2')||'instagram',
+        getMeta(o.id,'username2')||'',
+        (o.items||[]).length,
+      ]);
+    });
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'gifting-studio-creators.csv';
+    a.click();
+  }
 </script>
 </body>
 </html>
