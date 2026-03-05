@@ -194,11 +194,20 @@ Extract: first_name, last_name, full_name, address_line1, city, postcode, countr
 If a field is not found, use "".
 
 CRITICAL RULES FOR ITEMS:
-- Each item must include its size if mentioned. Format: "Product Name - Size X"
-- Examples: "Black Silk Hoodie - Size M", "Raw Denim Jeans - Size 32", "Puffer Jacket - Size L"
-- If a size applies to multiple items, apply it to each one individually
-- Never put size information in notes — always attach it to the item name
-- If no size is mentioned for an item, just use the product name
+- Identify ALL product names in the text (clothing items, accessories, etc.)
+- Identify ALL size mentions anywhere in the text (e.g. "Size: M", "M hoodies", "Pants M", "size L")
+- Even if sizes and product names are on different lines, connect them intelligently
+- If one size applies to all items, apply it to every item: "Black Silk Hoodie - Size M", "Black Raw Denim - Size M"
+- If different sizes apply to different items, match them as best you can
+- Format: "Product Name - Size X"
+- NEVER put size info in notes — always attach to item name
+- Notes should only contain genuinely separate information like store names or special instructions
+
+Example input:
+"Size: M hoodies Pants M
+Black Silk hoodie
+Black Raw Denim"
+Example output items: ["Black Silk Hoodie - Size M", "Black Raw Denim - Size M"]
 
 Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city":"","postcode":"","country":"","country_code":"","email":"","phone":"","items":[],"notes":""}`;
 
