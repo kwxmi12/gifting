@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-version="1.1.1">
+<html lang="en" data-version="1.0.4">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -221,7 +221,8 @@
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
     <div style="font-size:12px;color:#606070;">Click any cell to edit · Social usernames become clickable links</div>
     <div style="display:flex;gap:8px;align-items:center;">
-      <button class="btn-ghost" style="font-size:11px;" id="sync-all-btn" onclick="syncAllFromShopify(event)" title="Sync missing data · Hold Shift to force re-sync everyone">↻ Sync All</button>
+      <span id="selection-hint" style="font-size:11px;color:#606070;display:none;">0 selected</span>
+      <button class="btn-ghost" style="font-size:11px;display:none;" id="sync-all-btn" onclick="syncAllFromShopify(event)" title="Sync selected · Hold Shift to force re-sync">↻ Sync Selected</button>
       <button class="btn-ghost" style="font-size:11px;" onclick="exportCreatorsCSV()">↓ Export CSV</button>
     </div>
   </div>
@@ -266,6 +267,7 @@
   let accountSlug = "";
   let orders = [];
   let archived = [];
+  let selectedCreators = new Set();
   let pendingImage = null;
   let activeTab = "text";
   let editingId = null;
@@ -288,6 +290,9 @@
       renderOrders();
     } catch(e) {}
   })();
+
+  // Track mousedown target so row-click selection ignores inputs/buttons/links
+  document.addEventListener('mousedown', e => { window._creatorRowClickTarget = e.target; });
 
   const SYSTEM_PROMPT = `You are an address parsing assistant for an Instagram gifting tool.
 Parse text OR images into structured customer/order data.
@@ -615,12 +620,29 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
     }
   }
 
+  function toggleCreatorSelect(id) {
+    // Don't trigger if user clicked an input/select/button/link inside the row
+    if (window._creatorRowClickTarget) {
+      const t = window._creatorRowClickTarget;
+      window._creatorRowClickTarget = null;
+      if (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'BUTTON' || t.tagName === 'A') return;
+    }
+    if (selectedCreators.has(id)) selectedCreators.delete(id);
+    else selectedCreators.add(id);
+    const btn = document.getElementById('sync-all-btn');
+    const hint = document.getElementById('selection-hint');
+    if (btn) btn.style.display = selectedCreators.size > 0 ? 'inline-flex' : 'none';
+    if (hint) { hint.style.display = selectedCreators.size > 0 ? 'inline' : 'none'; hint.textContent = selectedCreators.size + ' selected'; }
+    renderCreatorsTable();
+  }
+
   async function syncAllFromShopify(event) {
     const forceAll = event && event.shiftKey;
     const btn = document.getElementById('sync-all-btn');
+    const selected = archived.filter(o => selectedCreators.has(o.id));
     const toSync = forceAll
-      ? [...archived]
-      : archived.filter(o => !getMeta(o.id,'orderNum') || !getMeta(o.id,'tracking'));
+      ? selected
+      : selected.filter(o => !getMeta(o.id,'orderNum') || !getMeta(o.id,'tracking'));
     if (toSync.length === 0) { btn.textContent = '✓ All synced'; setTimeout(() => btn.textContent = '↻ Sync All', 2000); return; }
     btn.disabled = true; btn.textContent = `Syncing 0/${toSync.length}…`;
     let done = 0;
@@ -635,6 +657,7 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
         if (data.found) {
           if (data.orderName && !getMeta(order.id, 'orderNum')) setMeta(order.id, 'orderNum', data.orderName);
           if (data.trackingUrl && !getMeta(order.id, 'tracking')) setMeta(order.id, 'tracking', data.trackingUrl);
+          if (data.orderUrl) setMeta(order.id, 'orderUrl', data.orderUrl);
         }
       } catch(e) { /* skip failed */ }
       done++;
@@ -642,7 +665,10 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
     }
     btn.disabled = false;
     btn.textContent = `✓ Synced ${done}`;
-    setTimeout(() => btn.textContent = '↻ Sync All', 3000);
+    setTimeout(() => { btn.textContent = '↻ Sync Selected'; btn.style.display = 'none'; }, 3000);
+    selectedCreators.clear();
+    const hint = document.getElementById('selection-hint');
+    if (hint) { hint.style.display = 'none'; }
     renderCreatorsTable();
   }
 
@@ -923,8 +949,11 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
         const dateSent = o.archivedAt ? new Date(o.archivedAt).toLocaleDateString('en-GB') : '—';
         const orderNum = getMeta(o.id,'orderNum') || '';
         const draftUrl = getMeta(o.id,'draftUrl') || '';
+        const orderUrl = getMeta(o.id,'orderUrl') || '';
         const draftLink = draftUrl && !orderNum ? '<a href="' + draftUrl + '" target="_blank" title="Open draft in Shopify" style="color:#c8a96e;font-size:11px;text-decoration:none;margin-left:2px;">draft ↗</a>' : '';
-        const orderNumCell = '<input class="cell-input" placeholder="e.g. #32097" value="' + orderNum.replace(/"/g,'&quot;') + '" onchange="setMeta(' + o.id + ',\'orderNum\',this.value)" style="width:80px;" />' + draftLink;
+        const orderNumCell = orderNum && orderUrl
+          ? '<a href="' + orderUrl + '" target="_blank" style="color:#c8a96e;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;" title="Open in Shopify">' + orderNum + ' ↗</a>'
+          : '<input class="cell-input" placeholder="e.g. #32097" value="' + orderNum.replace(/"/g,'&quot;') + '" onchange="setMeta(' + o.id + ',\'orderNum\',this.value)" style="width:80px;" />' + draftLink;
         const tracking = getMeta(o.id,'tracking') || '';
         const p1 = getMeta(o.id,'platform1') || 'instagram';
         const u1 = getMeta(o.id,'username1') || '';
