@@ -219,7 +219,10 @@
 <div id="creators-container" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
     <div style="font-size:12px;color:#606070;">Click any cell to edit · Social usernames become clickable links</div>
-    <button class="btn-ghost" style="font-size:11px;" onclick="exportCreatorsCSV()">↓ Export CSV</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn-ghost" style="font-size:11px;" id="sync-all-btn" onclick="syncAllFromShopify(event)" title="Sync missing data · Hold Shift to force re-sync everyone">↻ Sync All</button>
+      <button class="btn-ghost" style="font-size:11px;" onclick="exportCreatorsCSV()">↓ Export CSV</button>
+    </div>
   </div>
   <div style="overflow-x:auto;border-radius:12px;border:1px solid #2a2a35;">
     <table class="creators-table" id="creators-table">
@@ -270,8 +273,14 @@
 Parse text OR images into structured customer/order data.
 Return ONLY valid JSON. No markdown, no explanation, no code fences.
 
-Extract: first_name, last_name, full_name, address_line1, city, postcode, country, country_code (2-letter ISO), email, phone, items (array of strings), notes.
+Extract: first_name, last_name, full_name, address_line1, city, postcode, country, country_code (2-letter ISO), email, phone, items (array of strings), notes, instagram_handle.
 If a field is not found, use "".
+
+INSTAGRAM HANDLE RULE:
+- If the image shows an Instagram DM screenshot, look for the @username beneath the display name at the top of the screen (e.g. "@to.mward"). This is the instagram_handle.
+- Strip the @ symbol from the handle value.
+- The display name (e.g. "Tom Ward") is NOT the handle — only extract the @username shown in smaller text below it.
+- If no handle is visible, return "".
 
 CRITICAL RULES FOR ITEMS:
 - Identify ALL product names in the text (clothing items, accessories, etc.)
@@ -289,7 +298,7 @@ Black Silk hoodie
 Black Raw Denim"
 Example output items: ["Black Silk Hoodie - Size M", "Black Raw Denim - Size M"]
 
-Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city":"","postcode":"","country":"","country_code":"","email":"","phone":"","items":[],"notes":""}`;
+Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city":"","postcode":"","country":"","country_code":"","email":"","phone":"","items":[],"notes":"","instagram_handle":""}`;
 
   // ── Auth ──────────────────────────────────────────────
   async function handleLogin() {
@@ -454,6 +463,11 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
     if (!order) return;
     order.status = "Sent";
     order.archivedAt = new Date().toISOString();
+    // Auto-populate Username 1 from instagram_handle if not already set
+    if (order.instagram_handle && !getMeta(id, 'username1')) {
+      setMeta(id, 'username1', order.instagram_handle);
+      setMeta(id, 'platform1', 'instagram');
+    }
     archived.unshift(order);
     orders = orders.filter(o => o.id !== id);
     renderOrders();
@@ -557,6 +571,37 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
       alert("Sync error: " + e.message);
       if (btn) { btn.disabled = false; btn.textContent = '↻'; btn.style.opacity = '1'; }
     }
+  }
+
+  async function syncAllFromShopify(event) {
+    const forceAll = event && event.shiftKey;
+    const btn = document.getElementById('sync-all-btn');
+    const toSync = forceAll
+      ? [...archived]
+      : archived.filter(o => !getMeta(o.id,'orderNum') || !getMeta(o.id,'tracking'));
+    if (toSync.length === 0) { btn.textContent = '✓ All synced'; setTimeout(() => btn.textContent = '↻ Sync All', 2000); return; }
+    btn.disabled = true; btn.textContent = `Syncing 0/${toSync.length}…`;
+    let done = 0;
+    for (const order of toSync) {
+      try {
+        const res = await fetch("/api/shopify-sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: sessionPassword, email: order.email, name: order.full_name }),
+        });
+        const data = await res.json();
+        if (data.found) {
+          if (data.orderName && !getMeta(order.id, 'orderNum')) setMeta(order.id, 'orderNum', data.orderName);
+          if (data.trackingUrl && !getMeta(order.id, 'tracking')) setMeta(order.id, 'tracking', data.trackingUrl);
+        }
+      } catch(e) { /* skip failed */ }
+      done++;
+      btn.textContent = `Syncing ${done}/${toSync.length}…`;
+    }
+    btn.disabled = false;
+    btn.textContent = `✓ Synced ${done}`;
+    setTimeout(() => btn.textContent = '↻ Sync All', 3000);
+    renderCreatorsTable();
   }
 
   // ── Render ────────────────────────────────────────────
