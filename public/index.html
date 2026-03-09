@@ -630,9 +630,13 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
   function toggleCreatorSelect(id) {
     // Don't trigger if user clicked an input/select/button/link inside the row
     if (window._creatorRowClickTarget) {
-      const t = window._creatorRowClickTarget;
+      let t = window._creatorRowClickTarget;
       window._creatorRowClickTarget = null;
-      if (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'BUTTON' || t.tagName === 'A') return;
+      // Walk up the DOM to catch clicks on elements inside an <a> tag
+      while (t && t.tagName !== 'TR') {
+        if (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'BUTTON' || t.tagName === 'A') return;
+        t = t.parentElement;
+      }
     }
     if (selectedCreators.has(id)) selectedCreators.delete(id);
     else selectedCreators.add(id);
@@ -699,7 +703,7 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
       : "No archived orders yet — mark orders as Sent to archive them";
 
     exportBtn.style.display = items.length > 0 ? "inline-flex" : "none";
-    exportHint.style.display = items.length > 0 ? "flex" : "none";
+    exportHint.style.display = 'none';
     exportBtn.textContent = `⎘ Copy ${items.length} Order${items.length !== 1 ? "s" : ""} as CSV`;
 
     list.innerHTML = items.map(o => {
@@ -958,9 +962,11 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
         const draftUrl = getMeta(o.id,'draftUrl') || '';
         const orderUrl = getMeta(o.id,'orderUrl') || '';
         const draftLink = draftUrl && !orderNum ? '<a href="' + draftUrl + '" target="_blank" title="Open draft in Shopify" style="color:#c8a96e;font-size:11px;text-decoration:none;margin-left:2px;">draft ↗</a>' : '';
-        const orderNumCell = orderNum && orderUrl
-          ? '<a href="' + orderUrl + '" target="_blank" style="color:#c8a96e;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;" title="Open in Shopify">' + orderNum + ' ↗</a>'
-          : '<input class="cell-input" placeholder="e.g. #32097" value="' + orderNum.replace(/"/g,'&quot;') + '" onchange="setMeta(' + o.id + ',\'orderNum\',this.value)" style="width:80px;" />' + draftLink;
+        // Build Shopify URL — use stored orderUrl, or derive from order number
+        const resolvedOrderUrl = orderUrl || (orderNum ? 'https://admin.shopify.com/store/crvdae/orders?query=' + encodeURIComponent(orderNum) : '');
+        const orderNumCell = orderNum
+          ? '<a href="' + resolvedOrderUrl + '" target="_blank" style="color:#c8a96e;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;" title="Open in Shopify">' + orderNum + ' ↗</a>'
+          : '<input class="cell-input" placeholder="e.g. #32097" value="" onchange="setMeta(' + o.id + ',\'orderNum\',this.value)" style="width:80px;" />' + draftLink;
         const tracking = getMeta(o.id,'tracking') || '';
         const p1 = getMeta(o.id,'platform1') || 'instagram';
         const u1 = getMeta(o.id,'username1') || '';
