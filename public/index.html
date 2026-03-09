@@ -829,6 +829,9 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
         const isFirst = idx === 0;
         const dateSent = o.archivedAt ? new Date(o.archivedAt).toLocaleDateString('en-GB') : '—';
         const orderNum = getMeta(o.id,'orderNum') || '';
+        const draftUrl = getMeta(o.id,'draftUrl') || '';
+        const draftLink = draftUrl && !orderNum ? '<a href="' + draftUrl + '" target="_blank" title="Open draft in Shopify" style="color:#c8a96e;font-size:11px;text-decoration:none;margin-left:2px;">draft ↗</a>' : '';
+        const orderNumCell = '<input class="cell-input" placeholder="e.g. #32097" value="' + orderNum.replace(/"/g,'&quot;') + '" onchange="setMeta(' + o.id + ',\'orderNum\',this.value)" style="width:80px;" />' + draftLink;
         const tracking = getMeta(o.id,'tracking') || '';
         const p1 = getMeta(o.id,'platform1') || 'instagram';
         const u1 = getMeta(o.id,'username1') || '';
@@ -875,12 +878,7 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
             }
           </td>
           <td style="white-space:nowrap;">
-            \${(() => {
-              const draftUrl = getMeta(o.id,'draftUrl') || '';
-              const link = draftUrl && !orderNum ? `<a href="\${draftUrl}" target="_blank" title="Open draft in Shopify" style="color:#c8a96e;font-size:11px;text-decoration:none;margin-left:2px;">draft ↗</a>` : '';
-              return `<input class="cell-input" placeholder="e.g. #32097" value="\${orderNum}" onchange="setMeta(\${o.id},'orderNum',this.value)" style="width:80px;" />\${link}`;
-            })()}
-          </td>
+            ${orderNumCell}
           <td style="color:#707080;">${dateSent}</td>
           <td>${trackHtml}<br><input class="cell-input" placeholder="paste URL" value="${tracking}" onchange="setMeta(${o.id},'tracking',this.value);renderCreatorsTable()" style="width:90px;font-size:10px;color:#505060;" /></td>
           <td><select class="platform-select" onchange="setMeta(${o.id},'platform1',this.value)">
