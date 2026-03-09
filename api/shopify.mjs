@@ -155,11 +155,16 @@ async function resolveLineItem(itemText, allProducts) {
   if (bestProduct && bestScore >= 0.5) {
     let variant = null;
     if (size) {
+      // Exact match first (option1/2 are usually just the size string e.g. "S")
       variant = bestProduct.variants.find(v =>
         v.option1?.toUpperCase() === size ||
-        v.option2?.toUpperCase() === size ||
-        v.title?.toUpperCase().includes(size)
+        v.option2?.toUpperCase() === size
       );
+      // Fallback: word-boundary match in title (e.g. "Size S / Black") - avoid "S" matching "XS"
+      if (!variant) {
+        const sizeRe = new RegExp(`\\b${size}\\b`, 'i');
+        variant = bestProduct.variants.find(v => sizeRe.test(v.title));
+      }
     }
     if (!variant) variant = bestProduct.variants[0];
     return { variant_id: variant.id, quantity: 1 };
@@ -213,9 +218,10 @@ export default async function handler(req, res) {
       },
     };
 
+    // Always attach email so it shows in Shopify contact info
+    if (order.email) draftOrder.draft_order.email = order.email;
     if (customerId) {
       draftOrder.draft_order.customer = { id: customerId };
-      draftOrder.draft_order.email = order.email;
     }
 
     const { status, data } = await shopifyFetch("/draft_orders.json", "POST", draftOrder);
@@ -225,7 +231,7 @@ export default async function handler(req, res) {
     }
 
     const adminUrl = `https://admin.shopify.com/store/crvdae/draft_orders/${data.draft_order.id}`;
-    return res.status(200).json({ ok: true, draftOrderId: data.draft_order.id, adminUrl });
+    return res.status(200).json({ ok: true, draftOrderId: data.draft_order.id, orderName: data.draft_order.name, adminUrl });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
