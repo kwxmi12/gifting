@@ -458,6 +458,13 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
     await apiOrders({ action: "add", order });
   }
 
+  function updateOrderField(id, key, value) {
+    const order = orders.find(o => o.id === id);
+    if (!order) return;
+    order[key] = value;
+    apiOrders({ action: "update", order });
+  }
+
   async function archiveOrder(id) {
     const order = orders.find(o => o.id === id);
     if (!order) return;
@@ -673,6 +680,12 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
       </div>
       ${items ? `<div><div class="lbl" style="margin-bottom:6px;">Items</div><div>${items}</div></div>` : ""}
       ${notes}${archivedDate}
+      ${!isArchived ? `<div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:#505060;white-space:nowrap;">📸 IG handle</span>
+        <input class="cell-input" placeholder="@username" value="${o.instagram_handle||''}"
+          onchange="updateOrderField(${o.id},'instagram_handle',this.value.replace(/^@/,''))"
+          style="width:140px;font-size:12px;" />
+      </div>` : ''}
     </div>`;
   }
 
