@@ -3,6 +3,22 @@
     { "source": "/api/orders", "destination": "/api/orders.mjs" },
     { "source": "/api/parse", "destination": "/api/parse.mjs" },
     { "source": "/api/shopify", "destination": "/api/shopify.mjs" },
+    { "source": "/api/shopify-sync", "destination": "/api/shopify-sync.mjs" },
+    { "source": "/api/accounts", "destination": "/api/accounts.mjs" },
     { "source": "/(.*)", "destination": "/public/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/public/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/icon.png",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    }
   ]
 }
