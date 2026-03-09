@@ -236,6 +236,7 @@
           <th style="width:60px;">Platform 2</th>
           <th style="width:130px;">Username 2</th>
           <th style="width:70px;">Items Sent</th>
+          <th style="width:44px;">Sync</th>
         </tr>
       </thead>
       <tbody id="creators-tbody"></tbody>
@@ -514,11 +515,48 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || JSON.stringify(data));
       if (!data.adminUrl) throw new Error("No URL: " + JSON.stringify(data));
+      // Store draft URL so we can link to it; team fills in real order # after completion
+      if (data.adminUrl) setMeta(id, 'draftUrl', data.adminUrl);
+      renderCreatorsTable();
       window.open(data.adminUrl, "_blank");
     } catch (e) {
       alert("Shopify error: " + e.message);
     }
     if (btn) { btn.disabled = false; btn.innerHTML = '🛍 Shopify'; }
+  }
+
+  // ── Shopify Sync ──────────────────────────────────────
+  async function syncFromShopify(id) {
+    const order = archived.find(o => o.id === id);
+    if (!order) return;
+    const btn = document.getElementById(`sync-btn-${id}`);
+    if (btn) { btn.disabled = true; btn.textContent = '⟳'; btn.style.opacity = '0.5'; }
+    try {
+      const res = await fetch("/api/shopify-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: sessionPassword, email: order.email, name: order.full_name }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Sync failed");
+      if (!data.found) {
+        if (btn) { btn.disabled = false; btn.textContent = '↻'; btn.style.opacity = '1'; btn.title = 'Not found in Shopify'; btn.style.color = '#c06060'; }
+        return;
+      }
+      // Update order number if not already set manually
+      if (data.orderName && !getMeta(id, 'orderNum')) {
+        setMeta(id, 'orderNum', data.orderName);
+      }
+      // Update tracking URL if found and not already set
+      if (data.trackingUrl && !getMeta(id, 'tracking')) {
+        setMeta(id, 'tracking', data.trackingUrl);
+      }
+      if (btn) { btn.style.color = '#45a85a'; btn.textContent = '✓'; btn.title = `Synced: ${data.orderName}${data.trackingUrl ? ' · tracking found' : ' · no tracking yet'}`; }
+      renderCreatorsTable();
+    } catch(e) {
+      alert("Sync error: " + e.message);
+      if (btn) { btn.disabled = false; btn.textContent = '↻'; btn.style.opacity = '1'; }
+    }
   }
 
   // ── Render ────────────────────────────────────────────
@@ -836,7 +874,13 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
                 </details>`
             }
           </td>
-          <td><input class="cell-input" placeholder="—" value="${orderNum}" onchange="setMeta(${o.id},'orderNum',this.value)" style="width:75px;" /></td>
+          <td style="white-space:nowrap;">
+            \${(() => {
+              const draftUrl = getMeta(o.id,'draftUrl') || '';
+              const link = draftUrl && !orderNum ? `<a href="\${draftUrl}" target="_blank" title="Open draft in Shopify" style="color:#c8a96e;font-size:11px;text-decoration:none;margin-left:2px;">draft ↗</a>` : '';
+              return `<input class="cell-input" placeholder="e.g. #32097" value="\${orderNum}" onchange="setMeta(\${o.id},'orderNum',this.value)" style="width:80px;" />\${link}`;
+            })()}
+          </td>
           <td style="color:#707080;">${dateSent}</td>
           <td>${trackHtml}<br><input class="cell-input" placeholder="paste URL" value="${tracking}" onchange="setMeta(${o.id},'tracking',this.value);renderCreatorsTable()" style="width:90px;font-size:10px;color:#505060;" /></td>
           <td><select class="platform-select" onchange="setMeta(${o.id},'platform1',this.value)">
@@ -850,6 +894,10 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
           </select></td>
           <td>${u2html}</td>
           <td style="text-align:center;"><span class="count-badge">${isFirst && isMulti ? totalItems : (o.items||[]).length}</span></td>
+          <td style="text-align:center;">
+            <button id="sync-btn-${o.id}" onclick="syncFromShopify(${o.id})" title="Sync order # and tracking from Shopify"
+              style="background:none;border:1px solid #2a2a3a;border-radius:6px;color:#707080;font-size:13px;cursor:pointer;padding:3px 7px;transition:all 0.2s;">↻</button>
+          </td>
         </tr>`;
       });
     });
