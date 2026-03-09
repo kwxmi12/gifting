@@ -180,10 +180,21 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { password, order } = req.body;
-  if (password !== process.env.APP_PASSWORD) {
-    return res.status(401).json({ error: "Unauthorized" });
+  const { password, token, order } = req.body;
+  let authed = false;
+  if (token) {
+    try {
+      const [slug, ts, sig] = atob(token).split(":");
+      if (Date.now() - parseInt(ts) <= 30 * 24 * 60 * 60 * 1000) {
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${slug}:${ts}:${process.env.ADMIN_SECRET}`));
+        const expectedSig = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+        if (sig === expectedSig) authed = true;
+      }
+    } catch {}
+  } else if (password === process.env.APP_PASSWORD) {
+    authed = true;
   }
+  if (!authed) return res.status(401).json({ error: "Unauthorized" });
 
   try {
     const [customerId, allProducts] = await Promise.all([
