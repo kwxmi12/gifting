@@ -376,7 +376,7 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
   document.getElementById("pw-input").addEventListener("keydown", e => { if (e.key === "Enter") handleLogin(); });
 
   function handleLogout() {
-    sessionToken = ""; accountSlug = ""; orders = []; archived = [];
+    sessionToken = ""; accountSlug = ""; orders = []; archived = []; creatorMeta = {}; metaLoaded = false;
     try { localStorage.removeItem('gs_session'); } catch(e) {}
     document.getElementById("app-screen").style.display = "none";
     document.getElementById("login-screen").style.display = "flex";
@@ -402,7 +402,7 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
     document.getElementById("creators-container").style.display = view === "creators" ? "block" : "none";
     document.getElementById("archive-table-container").style.display = view === "archived" ? "block" : "none";
     document.getElementById("orders-list").style.display = (view === "creators" || view === "archived") ? "none" : "flex";
-    if (view === "creators") renderCreatorsTable();
+    if (view === "creators") { metaLoaded = false; renderCreatorsTable(); }
     else if (view === "archived") renderArchiveTable();
     else renderOrders();
   }
@@ -884,15 +884,16 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
   // ── Creators spreadsheet ──────────────────────────────
   let creatorMeta = {}; // { orderId: { platform1, username1, platform2, username2 } }
   let metaSaveTimer = null;
+  let metaLoaded = false;
 
   async function loadCreatorMeta() {
+    if (metaLoaded) return; // Only fetch from Redis once per session
     try {
       // Migrate localStorage to Redis once if data exists there
       const local = localStorage.getItem('creatorMeta');
       if (local) {
         const parsed = JSON.parse(local);
         if (Object.keys(parsed).length > 0) {
-          // Push local data to Redis
           await fetch('/api/meta', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -900,6 +901,7 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
           });
           localStorage.removeItem('creatorMeta');
           creatorMeta = parsed;
+          metaLoaded = true;
           return;
         }
         localStorage.removeItem('creatorMeta');
@@ -909,8 +911,15 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
       if (res.ok) {
         const data = await res.json();
         creatorMeta = data.meta || {};
+        metaLoaded = true;
       }
     } catch(e) { console.warn('loadCreatorMeta error', e); }
+  }
+
+  // Force a fresh reload from Redis (e.g. when switching to Creators tab)
+  async function reloadCreatorMeta() {
+    metaLoaded = false;
+    await loadCreatorMeta();
   }
 
   function saveCreatorMeta() {
