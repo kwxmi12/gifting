@@ -5,6 +5,7 @@
     { "source": "/api/shopify", "destination": "/api/shopify.mjs" },
     { "source": "/api/shopify-sync", "destination": "/api/shopify-sync.mjs" },
     { "source": "/api/accounts", "destination": "/api/accounts.mjs" },
+    { "source": "/api/meta", "destination": "/api/meta.mjs" },
     { "source": "/(.*)", "destination": "/public/index.html" }
   ],
   "headers": [
