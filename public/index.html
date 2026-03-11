@@ -883,13 +883,50 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
 
   // ── Creators spreadsheet ──────────────────────────────
   let creatorMeta = {}; // { orderId: { platform1, username1, platform2, username2 } }
+  let metaSaveTimer = null;
 
-  function loadCreatorMeta() {
-    try { const d = localStorage.getItem('creatorMeta'); if (d) creatorMeta = JSON.parse(d); } catch(e) {}
+  async function loadCreatorMeta() {
+    try {
+      // Migrate localStorage to Redis once if data exists there
+      const local = localStorage.getItem('creatorMeta');
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (Object.keys(parsed).length > 0) {
+          // Push local data to Redis
+          await fetch('/api/meta', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: sessionToken, action: 'setAll', meta: parsed }),
+          });
+          localStorage.removeItem('creatorMeta');
+          creatorMeta = parsed;
+          return;
+        }
+        localStorage.removeItem('creatorMeta');
+      }
+      // Load from Redis
+      const res = await fetch(`/api/meta?token=${encodeURIComponent(sessionToken)}`);
+      if (res.ok) {
+        const data = await res.json();
+        creatorMeta = data.meta || {};
+      }
+    } catch(e) { console.warn('loadCreatorMeta error', e); }
   }
+
   function saveCreatorMeta() {
-    try { localStorage.setItem('creatorMeta', JSON.stringify(creatorMeta)); } catch(e) {}
+    // Debounce — wait 800ms after last change before saving to Redis
+    clearTimeout(metaSaveTimer);
+    metaSaveTimer = setTimeout(async () => {
+      try {
+        await fetch('/api/meta', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: sessionToken, action: 'setAll', meta: creatorMeta }),
+        });
+      } catch(e) { console.warn('saveCreatorMeta error', e); }
+    }, 800);
   }
+
   function setMeta(id, key, val) {
     if (!creatorMeta[id]) creatorMeta[id] = {};
     creatorMeta[id][key] = val;
@@ -943,8 +980,8 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
     renderCreatorsTable();
   }
 
-  function renderCreatorsTable() {
-    loadCreatorMeta();
+  async function renderCreatorsTable() {
+    await loadCreatorMeta();
     const tbody = document.getElementById('creators-tbody');
     if (!tbody) return;
     const groups = groupCreators(archived);
@@ -1037,8 +1074,8 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
     tbody.innerHTML = rows || '<tr><td colspan="11" style="text-align:center;color:#404050;padding:24px;">No archived orders yet</td></tr>';
   }
 
-  function exportCreatorsCSV() {
-    loadCreatorMeta();
+  async function exportCreatorsCSV() {
+    await loadCreatorMeta();
     const rows = [['Customer','Email','Products','Order #','Date Sent','Tracking','Platform 1','Username 1','Platform 2','Username 2','Items Sent']];
     archived.forEach(o => {
       rows.push([
