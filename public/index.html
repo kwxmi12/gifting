@@ -106,6 +106,25 @@
       .login-card { padding: 32px 24px; }
       .edit-grid { grid-template-columns: 1fr; }
     }
+    /* Creators mobile cards */
+    .creator-card-mobile { display:none; }
+    @media (max-width: 768px) {
+      .creators-table-wrap { display: none !important; }
+      .creator-card-mobile { display: block; }
+      .cm-card { background:#13131a; border:1px solid #2a2a35; border-radius:12px; padding:14px 16px; margin-bottom:10px; }
+      .cm-card.cm-selected { background:#1e1e32; border-color:#c8a96e66; }
+      .cm-name { font-family:'Playfair Display',serif; font-size:16px; color:#f0ede8; margin-bottom:2px; }
+      .cm-meta { font-size:11px; color:#505060; margin-bottom:10px; }
+      .cm-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+      .cm-label { font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:#606070; width:72px; flex-shrink:0; }
+      .cm-value { font-size:13px; color:#e0ddd8; flex:1; }
+      .cm-input { background:transparent; border:none; border-bottom:1px solid #2a2a35; color:#e0ddd8; font-family:inherit; font-size:14px; outline:none; width:100%; padding:2px 0; }
+      .cm-input:focus { border-color:#c8a96e; color:#c8a96e; }
+      .cm-actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+      .cm-btn { background:none; border:1px solid #2a2a35; border-radius:6px; color:#707080; font-size:12px; cursor:pointer; padding:4px 10px; font-family:inherit; }
+      .cm-btn:active { background:#2a2a35; }
+      .cm-products { font-size:12px; color:#b0b0c8; }
+    }
   </style>
 </head>
 <body>
@@ -233,7 +252,7 @@
       <button class="btn-ghost" style="font-size:11px;" onclick="exportCreatorsCSV()">↓ Export CSV</button>
     </div>
   </div>
-  <div style="overflow-x:auto;border-radius:12px;border:1px solid #2a2a35;">
+  <div class="creators-table-wrap" style="overflow-x:auto;border-radius:12px;border:1px solid #2a2a35;">
     <table class="creators-table" id="creators-table">
       <thead>
         <tr>
@@ -254,6 +273,7 @@
       <tbody id="creators-tbody"></tbody>
     </table>
   </div>
+  <div class="creator-card-mobile" id="creators-cards"></div>
 </div>
 </div>
 
@@ -1081,6 +1101,48 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
       });
     });
     tbody.innerHTML = rows || '<tr><td colspan="11" style="text-align:center;color:#404050;padding:24px;">No archived orders yet</td></tr>';
+
+    // ── Mobile card view ──────────────────────────────
+    const cardsEl = document.getElementById('creators-cards');
+    if (!cardsEl) return;
+    const groups2 = groupCreators(archived);
+    let cards = '';
+    groups2.forEach((group, gi) => {
+      group.forEach((o, idx) => {
+        const isSelected = selectedCreators.has(o.id);
+        const orderNum = getMeta(o.id,'orderNum') || '';
+        const orderUrl = getMeta(o.id,'orderUrl') || '';
+        const draftUrl = getMeta(o.id,'draftUrl') || '';
+        const tracking = getMeta(o.id,'tracking') || '';
+        const p1 = getMeta(o.id,'platform1') || 'instagram';
+        const u1 = getMeta(o.id,'username1') || '';
+        const p2 = getMeta(o.id,'platform2') || 'instagram';
+        const u2 = getMeta(o.id,'username2') || '';
+        const dateSent = o.archivedAt ? new Date(o.archivedAt).toLocaleDateString('en-GB') : '—';
+        const resolvedOrderUrl = orderUrl || (orderNum ? 'https://admin.shopify.com/store/crvdae/orders?query=' + encodeURIComponent(orderNum) : '');
+        const orderLink = orderNum
+          ? `<a href="${resolvedOrderUrl}" target="_blank" style="color:#c8a96e;font-weight:600;text-decoration:none;">${orderNum} ↗</a>`
+          : `<input class="cm-input" placeholder="e.g. #32097" value="${orderNum}" onchange="setMeta(${o.id},'orderNum',this.value)" />`;
+        const trackLink = tracking
+          ? `<a href="${tracking}" target="_blank" style="color:#c8a96e;font-size:12px;text-decoration:none;">View ↗</a>`
+          : `<input class="cm-input" placeholder="paste URL" value="" onchange="setMeta(${o.id},'tracking',this.value)" style="font-size:12px;" />`;
+        const u1link = u1 ? `<a href="${profileUrl(p1,u1)}" target="_blank" style="color:#c8a96e;text-decoration:none;">${platformIcon(p1)} @${u1}</a>` : `<input class="cm-input" placeholder="@username" value="" onchange="setMeta(${o.id},'username1',this.value);renderCreatorsTable()" />`;
+        const u2link = u2 ? `<a href="${profileUrl(p2,u2)}" target="_blank" style="color:#c8a96e;text-decoration:none;">${platformIcon(p2)} @${u2}</a>` : '';
+        const products = (o.items||[]).join(', ') || '—';
+        cards += `<div class="cm-card ${isSelected ? 'cm-selected' : ''}" onclick="toggleCreatorSelect(${o.id})">
+          <div class="cm-name">${o.full_name||'—'}</div>
+          <div class="cm-meta">${o.email||''}${o.phone?' · '+o.phone:''} · ${dateSent}</div>
+          <div class="cm-row"><span class="cm-label">Products</span><span class="cm-value cm-products">${products}</span></div>
+          <div class="cm-row"><span class="cm-label">Order #</span><span class="cm-value">${orderLink}</span></div>
+          <div class="cm-row"><span class="cm-label">Tracking</span><span class="cm-value">${trackLink}</span></div>
+          <div class="cm-row"><span class="cm-label">Social</span><span class="cm-value">${u1link}${u2link ? ' · '+u2link : ''}</span></div>
+          <div class="cm-actions">
+            <button class="cm-btn" id="sync-btn-${o.id}" onclick="syncFromShopify(${o.id})" title="Sync from Shopify">↻ Sync</button>
+          </div>
+        </div>`;
+      });
+    });
+    cardsEl.innerHTML = cards || '<div style="text-align:center;color:#404050;padding:24px;">No archived orders yet</div>';
   }
 
   async function exportCreatorsCSV() {
