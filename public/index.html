@@ -102,6 +102,17 @@
     .btn-del-arch { background: transparent; border: 1px solid #5a2a2a; border-radius: 6px; color: #c06060; font-size: 11px; padding: 3px 6px; cursor: pointer; font-family: inherit; margin-left: 4px; }
     .btn-del-arch:hover { background: #3a1a1a; }
     .archived-card:hover { opacity: 1; }
+    .creator-modal-body { display:flex; flex-direction:column; gap:14px; max-height:70vh; overflow-y:auto; padding-right:4px; }
+    .cm-modal-section { background:#0e0e16; border:1px solid #2a2a35; border-radius:10px; padding:14px 16px; }
+    .cm-modal-label { font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:#606070; margin-bottom:6px; }
+    .cm-modal-value { font-size:14px; color:#e0ddd8; }
+    .cm-modal-input { background:#13131a; border:1px solid #2a2a35; border-radius:8px; color:#f0ede8; font-family:inherit; font-size:14px; outline:none; padding:8px 12px; width:100%; box-sizing:border-box; transition:border-color 0.2s; }
+    .cm-modal-input:focus { border-color:#c8a96e; }
+    .cm-modal-row { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
+    .cm-modal-row:last-child { margin-bottom:0; }
+    .item-tag { display:inline-flex; align-items:center; gap:6px; background:#1e1e2a; border:1px solid #2a2a35; border-radius:20px; padding:4px 10px; font-size:12px; color:#b0b0c8; margin:3px; }
+    .item-tag button { background:none; border:none; color:#505060; cursor:pointer; font-size:11px; padding:0; line-height:1; }
+    .item-tag button:hover { color:#c06060; }
     @media (max-width: 500px) {
       .login-card { padding: 32px 24px; }
       .edit-grid { grid-template-columns: 1fr; }
@@ -275,6 +286,20 @@
   </div>
   <div class="creator-card-mobile" id="creators-cards"></div>
 </div>
+</div>
+
+<div id="creator-modal" class="modal-bg" style="display:none;" onclick="hideCreatorModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:500px;width:100%;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div id="creator-modal-name" style="font-family:'Playfair Display',serif;font-size:20px;color:#f0ede8;"></div>
+      <button class="btn-ghost" onclick="hideCreatorModal()">✕</button>
+    </div>
+    <div class="creator-modal-body" id="creator-modal-body"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+      <button class="btn-primary" style="flex:1;" onclick="saveCreatorModal()">Save Changes</button>
+      <button class="btn-ghost" onclick="hideCreatorModal()">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <div id="csv-modal" class="modal-bg" style="display:none;" onclick="hideCSVModal()">
@@ -657,15 +682,8 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
   }
 
   function toggleCreatorSelect(id) {
-    // Don't trigger if user clicked an input/select/button/link inside the row
     if (window._creatorRowClickTarget) {
-      let t = window._creatorRowClickTarget;
       window._creatorRowClickTarget = null;
-      // Walk up the DOM to catch clicks on elements inside an <a> tag
-      while (t && t.tagName !== 'TR') {
-        if (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'BUTTON' || t.tagName === 'A') return;
-        t = t.parentElement;
-      }
     }
     if (selectedCreators.has(id)) selectedCreators.delete(id);
     else selectedCreators.add(id);
@@ -999,6 +1017,141 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
     return groups;
   }
 
+  let creatorModalId = null;
+
+  function showCreatorModal(id) {
+    const o = archived.find(o => o.id === id);
+    if (!o) return;
+    creatorModalId = id;
+    document.getElementById('creator-modal-name').textContent = o.full_name || '—';
+
+    const orderNum = getMeta(id,'orderNum') || '';
+    const orderUrl = getMeta(id,'orderUrl') || '';
+    const tracking = getMeta(id,'tracking') || '';
+    const p1 = getMeta(id,'platform1') || 'instagram';
+    const u1 = getMeta(id,'username1') || '';
+    const p2 = getMeta(id,'platform2') || 'instagram';
+    const u2 = getMeta(id,'username2') || '';
+    const items = [...(o.items || [])];
+    const resolvedOrderUrl = orderUrl || (orderNum ? 'https://admin.shopify.com/store/crvdae/orders?query=' + encodeURIComponent(orderNum) : '');
+    const dateSent = o.archivedAt ? new Date(o.archivedAt).toLocaleDateString('en-GB') : '—';
+
+    const itemTags = items.map((item, i) =>
+      `<span class="item-tag">${item}<button onclick="removeModalItem(${i})" title="Remove">✕</button></span>`
+    ).join('');
+
+    document.getElementById('creator-modal-body').innerHTML = `
+      <div class="cm-modal-section">
+        <div class="cm-modal-label">Customer</div>
+        <div class="cm-modal-value" style="margin-bottom:4px;">${o.full_name||'—'}</div>
+        <div style="font-size:12px;color:#505060;">${o.email||''}${o.phone?' · '+o.phone:''}</div>
+        <div style="font-size:12px;color:#505060;margin-top:2px;">Sent ${dateSent}</div>
+      </div>
+      <div class="cm-modal-section">
+        <div class="cm-modal-label">Products Sent</div>
+        <div id="modal-items-tags" style="margin-bottom:10px;">${itemTags || '<span style="color:#505060;font-size:12px;">No items</span>'}</div>
+        <div style="display:flex;gap:8px;">
+          <input class="cm-modal-input" id="modal-new-item" placeholder="Add item e.g. Black Hoodie - Size M" style="flex:1;" 
+            onkeydown="if(event.key==='Enter'){addModalItem();event.preventDefault();}" />
+          <button class="btn-ghost" onclick="addModalItem()" style="white-space:nowrap;font-size:12px;">+ Add</button>
+        </div>
+      </div>
+      <div class="cm-modal-section">
+        <div class="cm-modal-label">Order #</div>
+        ${orderNum
+          ? `<a href="${resolvedOrderUrl}" target="_blank" style="color:#c8a96e;font-weight:600;text-decoration:none;">${orderNum} ↗</a>
+             <div style="margin-top:8px;"><input class="cm-modal-input" id="modal-ordernum" value="${orderNum}" placeholder="e.g. #32097" /></div>`
+          : `<input class="cm-modal-input" id="modal-ordernum" value="" placeholder="e.g. #32097" />`
+        }
+      </div>
+      <div class="cm-modal-section">
+        <div class="cm-modal-label">Tracking URL</div>
+        ${tracking ? `<a href="${tracking}" target="_blank" style="color:#c8a96e;font-size:12px;text-decoration:none;display:block;margin-bottom:8px;">View tracking ↗</a>` : ''}
+        <input class="cm-modal-input" id="modal-tracking" value="${tracking}" placeholder="Paste tracking URL" />
+      </div>
+      <div class="cm-modal-section">
+        <div class="cm-modal-label">Social</div>
+        <div class="cm-modal-row">
+          <select class="platform-select" id="modal-p1" style="flex-shrink:0;">
+            <option value="instagram" ${p1==='instagram'?'selected':''}>📸 IG</option>
+            <option value="tiktok" ${p1==='tiktok'?'selected':''}>🎵 TT</option>
+          </select>
+          <input class="cm-modal-input" id="modal-u1" value="${u1}" placeholder="username" />
+        </div>
+        <div class="cm-modal-row">
+          <select class="platform-select" id="modal-p2" style="flex-shrink:0;">
+            <option value="instagram" ${p2==='instagram'?'selected':''}>📸 IG</option>
+            <option value="tiktok" ${p2==='tiktok'?'selected':''}>🎵 TT</option>
+          </select>
+          <input class="cm-modal-input" id="modal-u2" value="${u2}" placeholder="username (optional)" />
+        </div>
+      </div>
+      <div class="cm-modal-section">
+        <div class="cm-modal-label">Address</div>
+        <div style="font-size:13px;color:#707080;line-height:1.6;">
+          ${[o.address_line1, o.city, o.postcode, o.country].filter(Boolean).join(', ') || '—'}
+        </div>
+      </div>
+    `;
+    // Store items temporarily for editing
+    window._modalItems = [...items];
+    document.getElementById('creator-modal').style.display = 'flex';
+  }
+
+  function addModalItem() {
+    const input = document.getElementById('modal-new-item');
+    const val = input.value.trim();
+    if (!val) return;
+    window._modalItems.push(val);
+    input.value = '';
+    refreshModalItemTags();
+  }
+
+  function removeModalItem(idx) {
+    window._modalItems.splice(idx, 1);
+    refreshModalItemTags();
+  }
+
+  function refreshModalItemTags() {
+    const tags = (window._modalItems || []).map((item, i) =>
+      `<span class="item-tag">${item}<button onclick="removeModalItem(${i})" title="Remove">✕</button></span>`
+    ).join('');
+    const el = document.getElementById('modal-items-tags');
+    if (el) el.innerHTML = tags || '<span style="color:#505060;font-size:12px;">No items</span>';
+  }
+
+  function saveCreatorModal() {
+    if (!creatorModalId) return;
+    const id = creatorModalId;
+    // Save meta fields
+    const orderNum = document.getElementById('modal-ordernum')?.value.trim() || '';
+    const tracking = document.getElementById('modal-tracking')?.value.trim() || '';
+    const p1 = document.getElementById('modal-p1')?.value || 'instagram';
+    const u1 = document.getElementById('modal-u1')?.value.trim() || '';
+    const p2 = document.getElementById('modal-p2')?.value || 'instagram';
+    const u2 = document.getElementById('modal-u2')?.value.trim() || '';
+    setMeta(id, 'orderNum', orderNum);
+    setMeta(id, 'tracking', tracking);
+    setMeta(id, 'platform1', p1);
+    setMeta(id, 'username1', u1);
+    setMeta(id, 'platform2', p2);
+    setMeta(id, 'username2', u2);
+    // Save items back to the order object and persist
+    const order = archived.find(o => o.id === id);
+    if (order) {
+      order.items = [...(window._modalItems || [])];
+      apiOrders({ action: 'update', order });
+    }
+    hideCreatorModal();
+    renderCreatorsTable();
+  }
+
+  function hideCreatorModal() {
+    document.getElementById('creator-modal').style.display = 'none';
+    creatorModalId = null;
+    window._modalItems = [];
+  }
+
   function platformIcon(p) { return p === 'tiktok' ? '🎵' : '📸'; }
   function profileUrl(platform, username) {
     if (!username) return '';
@@ -1102,9 +1255,11 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
           </select></td>
           <td>${u2html}</td>
           <td style="text-align:center;"><span class="count-badge">${isFirst && isMulti ? totalItems : (o.items||[]).length}</span></td>
-          <td style="text-align:center;">
-            <button id="sync-btn-${o.id}" onclick="syncFromShopify(${o.id})" title="Sync order # and tracking from Shopify"
-              style="background:none;border:1px solid #2a2a3a;border-radius:6px;color:#707080;font-size:13px;cursor:pointer;padding:3px 7px;transition:all 0.2s;">↻</button>
+          <td style="text-align:center;white-space:nowrap;">
+            <button id="sync-btn-${o.id}" onclick="event.stopPropagation();syncFromShopify(${o.id})" title="Sync from Shopify"
+              style="background:none;border:1px solid #2a2a3a;border-radius:6px;color:#707080;font-size:13px;cursor:pointer;padding:3px 7px;transition:all 0.2s;margin-right:4px;">↻</button>
+            <button onclick="event.stopPropagation();toggleCreatorSelect(${o.id})" title="Select"
+              style="background:none;border:1px solid #2a2a3a;border-radius:6px;color:${isSelected?'#c8a96e':'#707080'};font-size:11px;cursor:pointer;padding:3px 7px;transition:all 0.2s;">✓</button>
           </td>
         </tr>`;
       });
@@ -1138,7 +1293,7 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
         const u1link = u1 ? `<a href="${profileUrl(p1,u1)}" target="_blank" style="color:#c8a96e;text-decoration:none;">${platformIcon(p1)} @${u1}</a>` : `<input class="cm-input" placeholder="@username" value="" onchange="setMeta(${o.id},'username1',this.value);renderCreatorsTable()" />`;
         const u2link = u2 ? `<a href="${profileUrl(p2,u2)}" target="_blank" style="color:#c8a96e;text-decoration:none;">${platformIcon(p2)} @${u2}</a>` : '';
         const products = (o.items||[]).join(', ') || '—';
-        cards += `<div class="cm-card ${isSelected ? 'cm-selected' : ''}" onclick="toggleCreatorSelect(${o.id})">
+        cards += `<div class="cm-card ${isSelected ? 'cm-selected' : ''}" onclick="showCreatorModal(${o.id})">
           <div class="cm-name">${o.full_name||'—'}</div>
           <div class="cm-meta">${o.email||''}${o.phone?' · '+o.phone:''} · ${dateSent}</div>
           <div class="cm-row"><span class="cm-label">Products</span><span class="cm-value cm-products">${products}</span></div>
