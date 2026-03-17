@@ -1259,7 +1259,7 @@ Return: {"first_name":"","last_name":"","full_name":"","address_line1":"","city"
             <button id="sync-btn-${o.id}" onclick="event.stopPropagation();syncFromShopify(${o.id})" title="Sync from Shopify"
               style="background:none;border:1px solid #2a2a3a;border-radius:6px;color:#707080;font-size:13px;cursor:pointer;padding:3px 7px;transition:all 0.2s;margin-right:4px;">↻</button>
             <button onclick="event.stopPropagation();toggleCreatorSelect(${o.id})" title="Select"
-              style="background:none;border:1px solid #2a2a3a;border-radius:6px;color:${isSelected?'#c8a96e':'#707080'};font-size:11px;cursor:pointer;padding:3px 7px;transition:all 0.2s;">✓</button>
+              style="background:none;border:1px solid #2a2a3a;border-radius:6px;color:${selectedCreators.has(o.id)?'#c8a96e':'#707080'};font-size:11px;cursor:pointer;padding:3px 7px;transition:all 0.2s;">✓</button>
           </td>
         </tr>`;
       });
